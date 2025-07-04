@@ -28,32 +28,28 @@ const scanBoxes = [
 ];
 
 // New function using takeWindowsScreenshotByHandle
-async function runWindowScreenshotOCR() {
+async function runWindowScreenshotOCR(handle) {
   try {
+    if (!handle) {
+      logOCR({ message: 'No game window handle provided for OCR', level: 'error' });
+      return;
+    }
     logOCR({ message: `🔍 Starting window screenshot OCR...`, level: 'info' });
-    
-    // First, get the game window handle
-    const gameInfo = await new Promise((resolve, reject) => {
-      overwolf.games.getRunningGameInfo(result => {
-        if (result.success && result.gameInfo) {
-          resolve(result.gameInfo);
-        } else {
-          reject(new Error('Failed to get game info'));
-        }
-      });
-    });
-
-    logOCR({ message: `🎮 Game window found: ${gameInfo.title}`, level: 'info' });
 
     // Take screenshot of the entire game window
     const screenshotPath = await new Promise((resolve, reject) => {
-      overwolf.media.takeWindowsScreenshotByHandle(gameInfo.handle, result => {
-        if (result.success) {
-          resolve(result.path);
-        } else {
-          reject(new Error(`Screenshot failed: ${result.error}`));
+      overwolf.media.takeWindowsScreenshotByHandle(
+        handle,
+        false, // postMediaEvent
+        '',    // targetFolder (default)
+        result => {
+          if (result.success) {
+            resolve(result.path);
+          } else {
+            reject(new Error(`Screenshot failed: ${result.error}`));
+          }
         }
-      });
+      );
     });
 
     logOCR({ message: `📸 Screenshot saved: ${screenshotPath}`, level: 'info' });
@@ -64,14 +60,27 @@ async function runWindowScreenshotOCR() {
         drawOCRBox(box);
         logOCR({ message: `🔍 Processing box at (${box.x}, ${box.y})...`, level: 'info' });
 
+        // Use overwolf.io.readFile to read the screenshot
+        const imageData = await new Promise((resolve, reject) => {
+          overwolf.io.readFile(screenshotPath, 'base64', result => {
+            if (result.success) {
+              resolve(result.data);
+            } else {
+              reject(new Error(`Failed to read screenshot: ${result.error}`));
+            }
+          });
+        });
+
         // Create a canvas to crop the screenshot
         const img = new Image();
-        img.crossOrigin = 'anonymous';
         
         await new Promise((resolve, reject) => {
           img.onload = resolve;
-          img.onerror = reject;
-          img.src = `file://${screenshotPath}`;
+          img.onerror = (e) => {
+            logOCR({ message: `❌ Image load error: ${e?.message || e}`, level: 'error' });
+            reject(new Error('Image load error'));
+          };
+          img.src = `data:image/jpeg;base64,${imageData}`;
         });
 
         // Create canvas and crop the image
@@ -84,7 +93,18 @@ async function runWindowScreenshotOCR() {
         ctx.drawImage(img, box.x, box.y, box.width, box.height, 0, 0, box.width, box.height);
         
         // Convert canvas to blob for Tesseract
-        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        const blob = await new Promise((resolve, reject) => {
+          canvas.toBlob(
+            b => {
+              if (b) resolve(b);
+              else {
+                logOCR({ message: '❌ Canvas toBlob error: blob is null', level: 'error' });
+                reject(new Error('Canvas toBlob error'));
+              }
+            },
+            'image/jpeg'
+          );
+        });
         
         // Process with Tesseract
         const result = await Tesseract.recognize(blob, 'eng', {
@@ -284,7 +304,9 @@ overwolf.windows.onMessageReceived.addListener(message => {
   }
 
   if (message.id === 'initiate_ocr') {
-    runWindowScreenshotOCR();
+    console.log('[Main] OCR initiated from background');
+    const handle = message.content && message.content.handle;
+    runWindowScreenshotOCR(handle);
   }
 });
 
@@ -303,17 +325,9 @@ if (ocrButton) {
 }
 
 function logOCR(message) {
+  console.log(`[OCR] ${message.message}`);
   overwolf.windows.sendMessage('ocr_log', 'ocr_log_update', message, () => {});
 }
 
 // First draw
 startAnimation();
-
-// Listen for OCR trigger from background
-if (window.name === 'ingame_overlay') {
-  overwolf.windows.onMessageReceived.addListener((message) => {
-    if (message.id === 'initiate_ocr') {
-      runWindowScreenshotOCR();
-    }
-  });
-}

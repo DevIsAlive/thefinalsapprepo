@@ -111,7 +111,24 @@ overwolf.games.events.onInfoUpdates2.addListener(update => {
 
 // ---------- Username OCR Detection ----------
 function requestOverlayOCR() {
-  sendMessage('ingame_overlay', 'initiate_ocr', null);
+  overwolf.games.getRunningGameInfo(result => {
+    logOCR(JSON.stringify(result), 'debug');
+    // Prefer gameInfo.handle, fallback to windowHandle.value
+    let handle = result?.gameInfo?.handle;
+    if (!handle && result?.windowHandle?.value) {
+      handle = result.windowHandle.value;
+    }
+    if (
+      result &&
+      result.isRunning &&
+      [23478, 234781].includes(result.classId) &&
+      handle
+    ) {
+      sendMessage('ingame_overlay', 'initiate_ocr', { handle });
+    } else {
+      logOCR('Failed to get game handle for OCR. isRunning: ' + result?.isRunning + ', classId: ' + result?.classId + ', handle: ' + handle, 'error');
+    }
+  });
 }
 
 function startUsernamePolling() {
