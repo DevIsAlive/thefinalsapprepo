@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=800, height=400, initial-scale=1.0" />
+  <title>The Finals In-Game Overlay</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      background: transparent;
+      font-family: sans-serif;
+      color: white;
+    }
+    .overlay-status.lobby   { color: #E6E6E6; border-color: #23233a; }
+    .overlay-status.ingame  { color: #00D4FF; border-color: #00D4FF77; }
+    .overlay-status.death   { color: #FF2A2A; border-color: #FF2A2A77; }
+    .overlay-status.summary { color: #FFD700; border-color: #FFD70077; }
+  </style>
+</head>
+<body>
+  <div class="overlay-title">THE FINALS<br/>Assistant Overlay</div>
+  <div id="overlay-status" class="overlay-status lobby">In Lobby</div>
+
+  <!-- add the donut so animateDonut() has something to hook into -->
+  <svg class="donut-chart" width="200" height="200" viewBox="0 0 240 240">
+    <circle class="donut-bg" cx="120" cy="120" r="100" stroke-width="20" fill="none"/>
+    <circle id="arc-elimination" cx="120" cy="120" r="100" stroke="#39FF14" stroke-width="20" fill="none" />
+    <circle id="arc-death"       cx="120" cy="120" r="100" stroke="#FF2A2A" stroke-width="20" fill="none" />
+  </svg>
+
+  <div class="notifier-container">
+    <div class="notifier-row" id="notifier-row"></div>
+    <button class="notifier-seeall" id="notifier-seeall">See all</button>
+  </div>
+
+  <!-- first the shared notifier/UI logic -->
+  <script src="notifier.js"></script>
+  <!-- then your overlay message‐bus logic -->
+  <script src="main.js"></script>
+
+  <!-- fixed scroll-hider (no undefined `e`) -->
+  <script>
+    (function(){
+      const row = document.getElementById("notifier-row"),
+            btn = document.getElementById("notifier-seeall");
+      if (!row || !btn) return;
+      row.addEventListener("scroll", () => {
+        btn.hidden = row.scrollTop + row.clientHeight <= row.scrollHeight - 2;
+      });
+      // hide until there's overflow
+      btn.hidden = row.firstChild && (row.scrollHeight <= row.clientHeight);
+    })();
+  </script>
+</body>
+</html>

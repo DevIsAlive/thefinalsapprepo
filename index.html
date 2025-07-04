@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>The Finals - Desktop</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  
+  <button id="open-ocr-log" class="btn">Open OCR Log</button>
+  <h1>The Finals - Desktop App</h1>
+  <div id="username-display" class="round-status">Username: Not detected yet…</div>
+
+  <div id="round-status" class="round-status">Waiting for game...</div>
+
+  <svg width="240" height="240" viewBox="0 0 240 240">
+    <circle cx="120" cy="120" r="100" stroke="#222" stroke-width="20" fill="none"/>
+    <circle id="arc-elimination" cx="120" cy="120" r="100" stroke="#00D4FF" stroke-width="20" fill="none"
+            stroke-dasharray="0 1" stroke-linecap="round" transform="rotate(-90 120 120)" />
+    <circle id="arc-death" cx="120" cy="120" r="100" stroke="#FF2A2A" stroke-width="20" fill="none"
+            stroke-dasharray="0 1" stroke-linecap="round" transform="rotate(-90 120 120)" />
+  </svg>
+
+  <div class="button-row">
+    <button class="btn eliminate-btn">Simulate Kill</button>
+    <button class="btn death-btn">Simulate Death</button>
+  </div>
+
+  <!-- Fix: Move scripts to the bottom -->
+  <script src="main.js"></script>
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      console.log('[Desktop] DOMContentLoaded');
+
+      const arcElimination = document.getElementById('arc-elimination');
+      const arcDeath = document.getElementById('arc-death');
+
+      const roundStatus = document.getElementById('round-status');
+      const eliminateBtn = document.querySelector('.eliminate-btn');
+      const deathBtn = document.querySelector('.death-btn');
+
+      window.eliminations = 0;
+      window.deaths = 0;
+      const CIRC = 2 * Math.PI * 100;
+
+      function renderDonut(e = 0, d = 0) {
+        const total = e + d;
+        if (!total) {
+          arcElimination.setAttribute('stroke-dasharray', '0 1');
+          arcDeath.setAttribute('stroke-dasharray', '0 1');
+          return;
+        }
+        const elimLen = CIRC * (e / total);
+        const deathLen = CIRC * (d / total);
+        arcElimination.setAttribute('stroke-dasharray', `${elimLen} ${CIRC - elimLen}`);
+        arcDeath.setAttribute('stroke-dasharray', `${deathLen} ${CIRC - deathLen}`);
+        arcDeath.setAttribute('stroke-dashoffset', `-${elimLen}`);
+      }
+
+      function animateDonut(newE, newD) {
+        cancelAnimationFrame(window.animFrame);
+        const startE = window.eliminations;
+        const startD = window.deaths;
+        const startTime = performance.now();
+        const duration = 500;
+
+        function animate(t) {
+          const now = performance.now();
+          const progress = Math.min((now - startTime) / duration, 1);
+          const currE = startE + progress * (newE - startE);
+          const currD = startD + progress * (newD - startD);
+          renderDonut(currE, currD);
+          if (progress < 1) {
+            window.animFrame = requestAnimationFrame(animate);
+          }
+        }
+        window.animFrame = requestAnimationFrame(animate);
+      }
+
+      eliminateBtn.onclick = () => {
+        window.eliminations += 1;
+        animateDonut(window.eliminations, window.deaths);
+      };
+
+      deathBtn.onclick = () => {
+        window.deaths += 1;
+        animateDonut(window.eliminations, window.deaths);
+      };
+
+      // Handle GEP events
+      overwolf.windows.onMessageReceived.addListener((message) => {
+        if (message.id !== 'game_event') return;
+        const data = message.data || message.content;
+        if (!data) return;
+        console.log('[Desktop] Received game_event:', data);
+
+        if (data.type === 'game_status') {
+          roundStatus.textContent = {
+            lobby: 'In Lobby',
+            ingame: 'In Game',
+            death: 'You Died!',
+            summary: 'Match Summary'
+          }[data.status] || 'Unknown';
+        } else if (data.type === 'round_started') {
+          roundStatus.textContent = data.started ? 'Round Started!' : 'Round Ended';
+        } else if (data.type === 'elimination') {
+          window.eliminations += data.count || 1;
+          animateDonut(window.eliminations, window.deaths);
+        } else if (data.type === 'death') {
+          window.deaths += 1;
+          animateDonut(window.eliminations, window.deaths);
+        }
+      });
+
+      renderDonut(0, 0);
+    });
+  </script>
+  <div id="debug-overlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></div>
+</body>
+</html>
