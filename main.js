@@ -20,6 +20,58 @@ let animationInProgress = false;
 const animationDuration = 700;
 const circumference = 2 * Math.PI * 100;
 
+// --- OCR Logic for Overlay ---
+const scanBoxes = [
+  { x: 765, y: 285, width: 478, height: 34 },
+  { x: 783, y: 161, width: 474, height: 31 },
+  { x: 791, y: 68,  width: 384, height: 33 }
+];
+
+async function runOverlayOCR() {
+  for (const box of scanBoxes) {
+    try {
+      drawOCRBox(box);
+      logOCR({ message: `🔍 Scanning box at (${box.x}, ${box.y})...`, level: 'info' });
+
+      const screenshotParams = {
+        roundAwayFromZero: true,
+        crop: {
+          x: box.x,
+          y: box.y,
+          width: box.width,
+          height: box.height
+        }
+      };
+
+      const url = await new Promise((resolve, reject) => {
+        overwolf.media.getScreenshotUrl(screenshotParams, res => {
+          if (res.success) resolve(res.url);
+          else reject(new Error(`getScreenshotUrl failed: ${res.error}`));
+        });
+      });
+
+      const result = await Tesseract.recognize(url, 'eng', {
+        logger: m => logOCR({ message: `[Tesseract] ${m.status} - ${Math.floor(m.progress * 100)}%`, level: 'debug' })
+      });
+
+      const text = result.data.text.trim().replace(/\n/g, ' ');
+      const match = text.match(/[A-Za-z0-9_]{3,20}/);
+
+      if (match) {
+        const username = match[0];
+        logOCR({ message: `✅ Username detected: ${username}`, level: 'success' });
+        overwolf.windows.sendMessage('background', 'username_found', username, () => {});
+        overwolf.windows.sendMessage('ocr_log', 'ocr_log_update', { message: `✅ Username detected: ${username}`, level: 'success' }, () => {});
+        return;
+      } else {
+        logOCR({ message: `⚠️ No match found in box (${box.x},${box.y})`, level: 'warn' });
+      }
+    } catch (err) {
+      logOCR({ message: `❌ OCR error: ${err.message}`, level: 'error' });
+    }
+  }
+}
+
 // --- Animate Donut ---
 function animateDonut(timestamp) {
   if (!animationStartTime) animationStartTime = timestamp;
@@ -144,6 +196,10 @@ overwolf.windows.onMessageReceived.addListener(message => {
   if (message.id === 'draw_debug_box') {
     drawOCRBox(message.content);
   }
+
+  if (message.id === 'initiate_ocr') {
+    runOverlayOCR();
+  }
 });
 
 // --- OCR Log Button ---
@@ -166,3 +222,12 @@ function logOCR(message) {
 
 // First draw
 startAnimation();
+
+// Listen for OCR trigger from background
+if (window.name === 'ingame_overlay') {
+  overwolf.windows.onMessageReceived.addListener((message) => {
+    if (message.id === 'initiate_ocr') {
+      runOverlayOCR();
+    }
+  });
+}

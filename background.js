@@ -110,55 +110,13 @@ overwolf.games.events.onInfoUpdates2.addListener(update => {
 });
 
 // ---------- Username OCR Detection ----------
-async function tryDetectUsername() {
-  for (const box of scanBoxes) {
-    try {
-      drawOCRBox(box);
-      logOCR(`🔍 Scanning box at (${box.x}, ${box.y})...`);
-
-      const screenshotParams = {
-        roundAwayFromZero: true,
-        crop: {
-          x: box.x,
-          y: box.y,
-          width: box.width,
-          height: box.height
-        }
-      };
-
-      const url = await new Promise((resolve, reject) => {
-        overwolf.media.getScreenshotUrl(screenshotParams, res => {
-          if (res.success) resolve(res.url);
-          else reject(new Error(`getScreenshotUrl failed: ${res.error}`));
-        });
-      });
-
-      const result = await Tesseract.recognize(url, 'eng', {
-        logger: m => logOCR(`[Tesseract] ${m.status} - ${Math.floor(m.progress * 100)}%`, 'debug')
-      });
-
-      const text = result.data.text.trim().replace(/\n/g, ' ');
-      const match = text.match(/[A-Za-z0-9_]{3,20}/);
-
-      if (match) {
-        const username = match[0];
-        usernameFound = true;
-        logOCR(`✅ Username detected: ${username}`, 'success');
-        windowNames.forEach(name => sendMessage(name, 'username_found', username));
-        return;
-      } else {
-        logOCR(`⚠️ No match found in box (${box.x},${box.y})`, 'warn');
-      }
-
-    } catch (err) {
-      logOCR(`❌ OCR error: ${err.message}`, 'error');
-    }
-  }
+function requestOverlayOCR() {
+  sendMessage('ingame_overlay', 'initiate_ocr', null);
 }
 
 function startUsernamePolling() {
   if (usernameFound) return;
-  tryDetectUsername();
+  requestOverlayOCR();
   setTimeout(startUsernamePolling, 2500);
 }
 
