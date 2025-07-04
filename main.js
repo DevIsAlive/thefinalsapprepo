@@ -28,107 +28,71 @@ const scanBoxes = [
 ];
 
 // New function using takeWindowsScreenshotByHandle
-async function runWindowScreenshotOCR(handle) {
+async function runWindowScreenshotOCR(handle, timestamp) {
+  logOCR({ message: `[runWindowScreenshotOCR] Called with handle: ${handle}, timestamp: ${timestamp}` });
+  if (!handle) {
+    logOCR({ message: 'No game window handle provided for OCR', level: 'error' });
+    return;
+  }
   try {
-    if (!handle) {
-      logOCR({ message: 'No game window handle provided for OCR', level: 'error' });
-      return;
-    }
-    logOCR({ message: `🔍 Starting window screenshot OCR...`, level: 'info' });
+    overwolf.media.takeWindowsScreenshotByHandle(
+      handle,
+      { saveToDisk: true },
+      result => {
+        const now = new Date().toISOString();
+        logOCR({ message: `[${now}] Screenshot result: success=${result.success}, url=${result.url}, error=${result.error}` });
+        if (!result.success) {
+          logOCR({ message: `Window screenshot OCR error: ${result.error}`, level: 'error' });
+          return;
+        }
+        logOCR({ message: `🔍 Starting window screenshot OCR...`, level: 'info' });
+        // Take screenshot of the entire game window
+        const screenshotPath = result.path;
+        logOCR({ message: `📸 Screenshot saved: ${screenshotPath}`, level: 'info' });
 
-    // Take screenshot of the entire game window
-    const screenshotPath = await new Promise((resolve, reject) => {
-      overwolf.media.takeWindowsScreenshotByHandle(
-        handle,
-        false, // postMediaEvent
-        '',    // targetFolder (default)
-        result => {
-          if (result.success) {
-            resolve(result.path);
-          } else {
-            reject(new Error(`Screenshot failed: ${result.error}`));
+        // Process each scan box
+        for (const box of scanBoxes) {
+          try {
+            drawOCRBox(box);
+            logOCR({ message: `🔍 Processing box at (${box.x}, ${box.y})...`, level: 'info' });
+
+            // Load the screenshot directly from the file path
+            const img = new Image();
+            img.onload = () => {
+              // Create canvas and crop the image
+              const canvas = document.createElement('canvas');
+              const ctx = canvas.getContext('2d');
+              canvas.width = box.width;
+              canvas.height = box.height;
+              
+              // Draw the cropped portion
+              ctx.drawImage(img, box.x, box.y, box.width, box.height, 0, 0, box.width, box.height);
+              
+              // Convert canvas to blob for Tesseract
+              const blob = canvas.toBlob(
+                b => {
+                  if (b) {
+                    processOCR(b);
+                  } else {
+                    logOCR({ message: '❌ Canvas toBlob error: blob is null', level: 'error' });
+                  }
+                },
+                'image/jpeg'
+              );
+            };
+            img.onerror = (e) => {
+              logOCR({ message: `❌ Image load error: ${e?.message || e}`, level: 'error' });
+            };
+            // Use file:/// protocol for local files
+            img.src = 'file:///' + screenshotPath.replace(/\\/g, '/');
+          } catch (err) {
+            logOCR({ message: `❌ Box processing error: ${err.message}`, level: 'error' });
           }
         }
-      );
-    });
-
-    logOCR({ message: `📸 Screenshot saved: ${screenshotPath}`, level: 'info' });
-
-    // Process each scan box
-    for (const box of scanBoxes) {
-      try {
-        drawOCRBox(box);
-        logOCR({ message: `🔍 Processing box at (${box.x}, ${box.y})...`, level: 'info' });
-
-        // Use overwolf.io.readFile to read the screenshot
-        const imageData = await new Promise((resolve, reject) => {
-          overwolf.io.readFile(screenshotPath, 'base64', result => {
-            if (result.success) {
-              resolve(result.data);
-            } else {
-              reject(new Error(`Failed to read screenshot: ${result.error}`));
-            }
-          });
-        });
-
-        // Create a canvas to crop the screenshot
-        const img = new Image();
-        
-        await new Promise((resolve, reject) => {
-          img.onload = resolve;
-          img.onerror = (e) => {
-            logOCR({ message: `❌ Image load error: ${e?.message || e}`, level: 'error' });
-            reject(new Error('Image load error'));
-          };
-          img.src = `data:image/jpeg;base64,${imageData}`;
-        });
-
-        // Create canvas and crop the image
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = box.width;
-        canvas.height = box.height;
-        
-        // Draw the cropped portion
-        ctx.drawImage(img, box.x, box.y, box.width, box.height, 0, 0, box.width, box.height);
-        
-        // Convert canvas to blob for Tesseract
-        const blob = await new Promise((resolve, reject) => {
-          canvas.toBlob(
-            b => {
-              if (b) resolve(b);
-              else {
-                logOCR({ message: '❌ Canvas toBlob error: blob is null', level: 'error' });
-                reject(new Error('Canvas toBlob error'));
-              }
-            },
-            'image/jpeg'
-          );
-        });
-        
-        // Process with Tesseract
-        const result = await Tesseract.recognize(blob, 'eng', {
-          logger: m => logOCR({ message: `[Tesseract] ${m.status} - ${Math.floor(m.progress * 100)}%`, level: 'debug' })
-        });
-
-        const text = result.data.text.trim().replace(/\n/g, ' ');
-        const match = text.match(/[A-Za-z0-9_]{3,20}/);
-
-        if (match) {
-          const username = match[0];
-          logOCR({ message: `✅ Username detected: ${username}`, level: 'success' });
-          overwolf.windows.sendMessage('background', 'username_found', username, () => {});
-          overwolf.windows.sendMessage('ocr_log', 'ocr_log_update', { message: `✅ Username detected: ${username}`, level: 'success' }, () => {});
-          return;
-        } else {
-          logOCR({ message: `⚠️ No match found in box (${box.x},${box.y})`, level: 'warn' });
-        }
-      } catch (err) {
-        logOCR({ message: `❌ Box processing error: ${err.message}`, level: 'error' });
       }
-    }
+    );
   } catch (err) {
-    logOCR({ message: `❌ Window screenshot OCR error: ${err.message}`, level: 'error' });
+    logOCR({ message: `Window screenshot OCR error: ${err.message}`, level: 'error' });
   }
 }
 
@@ -306,7 +270,8 @@ overwolf.windows.onMessageReceived.addListener(message => {
   if (message.id === 'initiate_ocr') {
     console.log('[Main] OCR initiated from background');
     const handle = message.content && message.content.handle;
-    runWindowScreenshotOCR(handle);
+    const timestamp = message.content && message.content.timestamp;
+    runWindowScreenshotOCR(handle, timestamp);
   }
 });
 

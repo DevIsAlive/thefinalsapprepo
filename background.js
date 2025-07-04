@@ -2,6 +2,7 @@ console.log('[BG] Background script loaded ✅');
 
 const windowNames = ['desktop', 'ingame_overlay'];
 let usernameFound = false;
+let ocrPollingActive = false;
 
 // Boxes to scan for username text
 const scanBoxes = [
@@ -21,6 +22,7 @@ function sendMessage(winName, id, content) {
 
 function sendGameEvent(eventData) {
   windowNames.forEach(name => sendMessage(name, 'game_event', eventData));
+  handleGameEvent(eventData);
 }
 
 function logOCR(message, level = 'info') {
@@ -112,21 +114,22 @@ overwolf.games.events.onInfoUpdates2.addListener(update => {
 // ---------- Username OCR Detection ----------
 function requestOverlayOCR() {
   overwolf.games.getRunningGameInfo(result => {
-    logOCR(JSON.stringify(result), 'debug');
+    const timestamp = new Date().toISOString();
     // Prefer gameInfo.handle, fallback to windowHandle.value
     let handle = result?.gameInfo?.handle;
     if (!handle && result?.windowHandle?.value) {
       handle = result.windowHandle.value;
     }
+    logOCR(`[${timestamp}] [requestOverlayOCR] isRunning: ${result?.isRunning}, classId: ${result?.classId}, handle: ${handle}`, 'debug');
     if (
       result &&
       result.isRunning &&
       [23478, 234781].includes(result.classId) &&
       handle
     ) {
-      sendMessage('ingame_overlay', 'initiate_ocr', { handle });
+      sendMessage('ingame_overlay', 'initiate_ocr', { handle, timestamp });
     } else {
-      logOCR('Failed to get game handle for OCR. isRunning: ' + result?.isRunning + ', classId: ' + result?.classId + ', handle: ' + handle, 'error');
+      logOCR(`[${timestamp}] Failed to get game handle for OCR. isRunning: ${result?.isRunning}, classId: ${result?.classId}, handle: ${handle}`, 'error');
     }
   });
 }
@@ -139,4 +142,11 @@ function startUsernamePolling() {
 
 // ---------- Startup ----------
 openAllWindows();
-setTimeout(startUsernamePolling, 8000);
+
+// Add a handler for game events to start polling on 'lobby' status
+function handleGameEvent(eventData) {
+  if (eventData.type === 'game_status' && eventData.status === 'lobby' && !ocrPollingActive) {
+    ocrPollingActive = true;
+    startUsernamePolling();
+  }
+}
