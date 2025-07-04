@@ -555,3 +555,78 @@ body {
   stroke: #ff0055;
   filter: drop-shadow(0 0 8px #ff0055aa);
 }
+
+/* OCR Results Styling */
+.ocr-results {
+  margin: 20px auto;
+  width: 300px;
+  background: rgba(30,32,40,0.55);
+  border-radius: 13px;
+  border: 2px solid #23233a;
+  backdrop-filter: blur(8px) saturate(1.2);
+  padding: 15px;
+  box-shadow: 0 2px 16px #00d4ff18, 0 1px 8px #18181f33;
+}
+
+.ocr-results h3 {
+  margin: 0 0 15px 0;
+  color: #00D4FF;
+  font-size: 1.1rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+.usernames-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.username-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  margin: 5px 0;
+  background: rgba(0,212,255,0.1);
+  border-radius: 8px;
+  border: 1px solid #00d4ff33;
+  transition: all 0.2s ease;
+}
+
+.username-item:hover {
+  background: rgba(0,212,255,0.2);
+  border-color: #00d4ff66;
+}
+
+.username-text {
+  color: #39FF14;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.username-time {
+  color: #E6E6E6bb;
+  font-size: 0.8rem;
+}
+
+.no-results {
+  color: #E6E6E6bb;
+  text-align: center;
+  font-style: italic;
+  padding: 20px;
+}
+
+/* Debug box styling */
+.debug-box {
+  position: absolute;
+  border: 2px solid #39FF14;
+  background: rgba(57, 255, 20, 0.1);
+  pointer-events: none;
+  z-index: 9999;
+  animation: debugBoxPulse 2s ease-in-out infinite;
+}
+
+@keyframes debugBoxPulse {
+  0%, 100% { opacity: 0.7; box-shadow: 0 0 10px #39FF14; }
+  50% { opacity: 1; box-shadow: 0 0 20px #39FF14, 0 0 30px #39FF14; }
+}

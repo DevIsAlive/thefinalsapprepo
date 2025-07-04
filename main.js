@@ -157,6 +157,19 @@ overwolf.windows.onMessageReceived.addListener(message => {
     }
   }
 
+  if (message.id === 'ocr_username_found') {
+    const { username, box, boxIndex, timestamp } = message.content;
+    console.log('[Main] OCR username found:', username, 'in box:', boxIndex);
+    
+    // Update the main username display
+    if (usernameDisplay) {
+      usernameDisplay.textContent = `Username: ${username}`;
+    }
+    
+    // Add to the usernames list
+    addUsernameToList(username, timestamp, boxIndex);
+  }
+
   if (message.id === 'draw_debug_box') {
     drawOCRBox(message.content);
   }
@@ -202,3 +215,140 @@ function logOCR(message) {
 
 // First draw
 startAnimation();
+
+// Add plugin test functionality
+const testPluginBtn = document.getElementById('test-plugin-btn');
+if (testPluginBtn) {
+  testPluginBtn.addEventListener('click', () => {
+    console.log('[Main] Testing plugin...');
+    overwolf.windows.sendMessage('background', 'test_plugin', {}, () => {});
+  });
+}
+
+// Add OCR test functionality
+const testOcrBtn = document.getElementById('test-ocr-btn');
+if (testOcrBtn) {
+  testOcrBtn.addEventListener('click', () => {
+    console.log('[Main] Testing OCR...');
+    overwolf.windows.sendMessage('background', 'test_ocr', {}, () => {});
+  });
+}
+
+// Add screenshot test functionality
+const testScreenshotBtn = document.getElementById('test-screenshot-btn');
+if (testScreenshotBtn) {
+  testScreenshotBtn.addEventListener('click', () => {
+    console.log('[Main] Testing screenshot...');
+    overwolf.windows.sendMessage('background', 'test_screenshot', {}, () => {});
+  });
+}
+
+// Function to add username to the list
+function addUsernameToList(username, timestamp, boxIndex) {
+  const usernamesList = document.getElementById('usernames-list');
+  if (!usernamesList) return;
+  
+  // Remove "no results" message if it exists
+  const noResults = usernamesList.querySelector('.no-results');
+  if (noResults) {
+    noResults.remove();
+  }
+  
+  // Create new username item
+  const usernameItem = document.createElement('div');
+  usernameItem.className = 'username-item';
+  
+  const time = new Date(timestamp).toLocaleTimeString();
+  
+  usernameItem.innerHTML = `
+    <span class="username-text">${username}</span>
+    <span class="username-time">${time} (Box ${boxIndex})</span>
+  `;
+  
+  // Add to the top of the list
+  usernamesList.insertBefore(usernameItem, usernamesList.firstChild);
+  
+  // Limit the list to 10 items
+  const items = usernamesList.querySelectorAll('.username-item');
+  if (items.length > 10) {
+    items[items.length - 1].remove();
+  }
+}
+
+// Listen for plugin test results
+overwolf.windows.onMessageReceived.addListener((message) => {
+  if (message.id === 'plugin_test_result') {
+    console.log('[Main] Plugin test result:', message.content);
+          if (message.content.success) {
+        const fileMethods = message.content.fileMethods || [];
+        alert(`Plugin test successful!\n\nFile methods: ${fileMethods.join(', ')}\n\nAll methods: ${message.content.methods.join(', ')}`);
+      } else {
+        alert(`Plugin test failed: ${message.content.error}`);
+      }
+  }
+});
+
+// --- OCR Integration for Ingame Overlay ---
+overwolf.windows.onMessageReceived.addListener(async (message) => {
+  if (message.id === 'perform_ocr') {
+    const { screenshotUrl, box, boxIndex, timestamp } = message.content;
+    const text = await runOcrOnScreenshot(screenshotUrl, box);
+    overwolf.windows.sendMessage('desktop', 'ocr_username_found', {
+      username: text,
+      box,
+      boxIndex,
+      timestamp
+    });
+  }
+});
+
+async function runOcrOnScreenshot(screenshotUrl, box) {
+  function overwolfPathToWindows(path) {
+    let winPath = path.replace('overwolf://media/screenshots/', '');
+    winPath = winPath.replace(/\//g, '\\');
+    winPath = decodeURIComponent(winPath);
+    if (!winPath.match(/^([a-zA-Z]:\\|\\\\)/)) {
+      winPath = `${overwolf.settings.getExtensionSettings().screenshot_folder || ''}\\${winPath}`;
+    }
+    return winPath;
+  }
+
+  return new Promise((resolve) => {
+    const windowsPath = overwolfPathToWindows(screenshotUrl);
+    overwolf.extensions.current.getExtraObject('simple-io-plugin', (result) => {
+      if (result.status === 'success') {
+        result.object.getBinaryFile(windowsPath, (fileResult) => {
+          if (fileResult.success && fileResult.content) {
+            const dataUrl = 'data:image/jpeg;base64,' + fileResult.content;
+            console.log('[OCR DEBUG] Data URL:', dataUrl.substring(0, 100) + '...'); // Log first 100 chars
+            const img = new Image();
+            img.onload = async () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = box.width;
+              canvas.height = box.height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, box.x, box.y, box.width, box.height, 0, 0, box.width, box.height);
+              // Debug: show the cropped canvas in the overlay
+              canvas.style.position = 'fixed';
+              canvas.style.top = (10 + 60 * box.y / 1000) + 'px';
+              canvas.style.left = (10 + 320 * box.x / 2000) + 'px';
+              canvas.style.zIndex = 99999;
+              canvas.style.border = '2px solid red';
+              document.body.appendChild(canvas);
+              setTimeout(() => canvas.remove(), 5000);
+              // OCR
+              const { data: { text } } = await Tesseract.recognize(canvas, 'eng');
+              resolve(text.trim());
+            };
+            img.onerror = () => resolve('');
+            img.src = dataUrl;
+          } else {
+            resolve('');
+          }
+        });
+      } else {
+        resolve('');
+      }
+    });
+  });
+}

@@ -31,14 +31,8 @@
         "in_game_only": false,
         "resizable": true,
         "transparent": false,
-        "size": {
-          "width": 1200,
-          "height": 800
-        },
-        "start_position": {
-          "left": 100,
-          "top": 100
-        },
+        "size": { "width": 1200, "height": 800 },
+        "start_position": { "left": 100, "top": 100 },
         "alwaysOnTop": true
       },
       "ingame_overlay": {
@@ -48,14 +42,8 @@
         "in_game_only": true,
         "resizable": false,
         "transparent": true,
-        "size": {
-          "width": 1920,
-          "height": 1080
-        },
-        "start_position": {
-          "left": 0,
-          "top": 0
-        },
+        "size": { "width": 1920, "height": 1080 },
+        "start_position": { "left": 0, "top": 0 },
         "alwaysOnTop": true
       },
       "ocr_log": {
@@ -64,14 +52,8 @@
         "desktop_only": true,
         "resizable": true,
         "transparent": false,
-        "size": {
-          "width": 600,
-          "height": 400
-        },
-        "start_position": {
-          "left": 150,
-          "top": 150
-        },
+        "size": { "width": 600, "height": 400 },
+        "start_position": { "left": 150, "top": 150 },
         "alwaysOnTop": false
       }
     },
@@ -90,9 +72,9 @@
       }
     ],
     "extra-objects": {
-      "OcrPlugin": {
-        "file": "OcrPlugin.dll",
-        "class": "overwolf.plugins.OcrPlugin"
+      "simple-io-plugin": {
+        "file": "simple-io-plugin.dll",
+        "class": "overwolf.plugins.simpleio.SimpleIOPlugin"
       }
     }
   }

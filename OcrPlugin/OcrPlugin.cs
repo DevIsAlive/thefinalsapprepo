@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 
 namespace overwolf.plugins
 {
@@ -7,8 +6,7 @@ namespace overwolf.plugins
     {
         public OcrPlugin()
         {
-            // This will create a file in your app root if the plugin loads
-            File.WriteAllText("plugin_test.log", $"Plugin loaded at {DateTime.Now}");
+            // Empty constructor
         }
 
         public void Test(Action<object> callback)

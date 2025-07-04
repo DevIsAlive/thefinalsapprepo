@@ -127,10 +127,49 @@ function requestOverlayOCR() {
       [23478, 234781].includes(result.classId) &&
       handle
     ) {
-      sendMessage('ingame_overlay', 'initiate_ocr', { handle, timestamp });
+      // Take screenshot and perform OCR
+      performGameScreenshotOCR(handle, timestamp);
     } else {
       logOCR(`[${timestamp}] Failed to get game handle for OCR. isRunning: ${result?.isRunning}, classId: ${result?.classId}, handle: ${handle}`, 'error');
     }
+  });
+}
+
+// Perform OCR on game screenshot
+function performGameScreenshotOCR(gameHandle, timestamp) {
+  logOCR(`[${timestamp}] Starting game screenshot OCR for handle: ${gameHandle}`, 'info');
+
+  // Use Overwolf's recommended screenshot method for DX12 games
+  overwolf.media.takeWindowsScreenshotByHandle(gameHandle, false, (result) => {
+    if (result.success) {
+      logOCR(`[${timestamp}] Screenshot captured: ${result.url}`, 'success');
+      // Wait before processing to ensure file is written and a new frame is captured
+      setTimeout(() => {
+        scanBoxes.forEach((box, index) => {
+          setTimeout(() => {
+            processOCRBox(result.url, box, index, timestamp);
+          }, index * 500);
+        });
+      }, 400); // 400ms delay
+    } else {
+      logOCR(`[${timestamp}] Screenshot failed: ${result.error}`, 'error');
+    }
+  });
+}
+
+// Process OCR for a specific box
+function processOCRBox(screenshotUrl, box, boxIndex, timestamp) {
+  logOCR(`[${timestamp}] Processing OCR box ${boxIndex}: ${JSON.stringify(box)}`, 'info');
+
+  // Only draw debug box on overlay
+  sendMessage('ingame_overlay', 'draw_debug_box', box);
+
+  // Send screenshot and box to overlay for OCR
+  sendMessage('ingame_overlay', 'perform_ocr', {
+    screenshotUrl,
+    box,
+    boxIndex,
+    timestamp
   });
 }
 
@@ -151,33 +190,170 @@ function handleGameEvent(eventData) {
   }
 }
 
-// --- OCR Plugin Integration ---
-let ocrPlugin = null;
-
-overwolf.extensions.current.getExtraObject('OcrPlugin', plugin => {
-  if (plugin && plugin.instance) {
-    ocrPlugin = plugin.instance;
-    console.log('[BG] OCR Plugin loaded');
+// Helper function to handle file read results
+function handleFileReadResult(result, targetWindow, box) {
+  console.log('[BG] File read result:', result);
+  logOCR(`File read result: ${JSON.stringify(result)}`, 'debug');
+  
+  if (result && result.status === 'success') {
+    // For now, just return success - we can add OCR processing later
+    sendMessage(targetWindow, 'ocr_result', { 
+      success: true, 
+      text: 'File read successfully', 
+      box,
+      fileData: result.data 
+    });
   } else {
-    console.error('[BG] Failed to load OCR Plugin');
+    sendMessage(targetWindow, 'ocr_result', { 
+      success: false, 
+      error: result ? result.error : 'Failed to read file', 
+      box 
+    });
+  }
+}
+
+// --- Simple IO Plugin Integration ---
+let simpleIOPlugin = null;
+
+// Load the Simple IO Plugin
+overwolf.extensions.current.getExtraObject('simple-io-plugin', result => {
+  console.log('[BG] Plugin load attempt result:', JSON.stringify(result));
+  if (result.status === 'success') {
+    simpleIOPlugin = result.object;
+    console.log('[BG] Simple IO Plugin loaded successfully');
+    logOCR('Simple IO Plugin loaded successfully', 'success');
+    
+    // Test the plugin to make sure it's working
+    console.log('[BG] Plugin object properties:', Object.getOwnPropertyNames(simpleIOPlugin));
+    logOCR(`Plugin object properties: ${Object.getOwnPropertyNames(simpleIOPlugin).join(', ')}`, 'info');
+    
+    if (simpleIOPlugin && typeof simpleIOPlugin.readFile === 'function') {
+      console.log('[BG] Plugin readFile method is available');
+      logOCR('Plugin readFile method is available', 'success');
+    } else {
+      console.warn('[BG] Plugin loaded but readFile method not found');
+      logOCR('Plugin readFile method not found - checking for alternative methods', 'warn');
+      
+      // Check for other file-related methods
+      const methods = Object.getOwnPropertyNames(simpleIOPlugin);
+      const fileMethods = methods.filter(m => m.toLowerCase().includes('file') || m.toLowerCase().includes('read'));
+      if (fileMethods.length > 0) {
+        console.log('[BG] Found file-related methods:', fileMethods);
+        logOCR(`Found file-related methods: ${fileMethods.join(', ')}`, 'info');
+      }
+    }
+  } else {
+    console.error('[BG] Failed to load Simple IO Plugin');
+    console.error('[BG] Result:', result);
+    logOCR(`Failed to load Simple IO Plugin: ${result.error || 'Unknown error'}`, 'error');
+    
+    // Try to get more info about available plugins
+    overwolf.extensions.current.getExtraObjects(extraObjects => {
+      console.log('[BG] Available extra objects:', JSON.stringify(extraObjects));
+      logOCR(`Available extra objects: ${JSON.stringify(extraObjects)}`, 'debug');
+    });
   }
 });
 
 overwolf.windows.onMessageReceived.addListener((message) => {
   if (message.id === 'start_ocr') {
     const { filePath, box, targetWindow } = message.content || {};
-    if (!ocrPlugin) {
-      sendMessage(targetWindow, 'ocr_result', { success: false, error: 'OCR plugin not loaded', box });
+    if (!simpleIOPlugin) {
+      sendMessage(targetWindow, 'ocr_result', { success: false, error: 'Simple IO plugin not loaded', box });
       return;
     }
-    ocrPlugin.OcrRegion(filePath, box.x, box.y, box.width, box.height, result => {
-      if (result && typeof result === 'string' && !result.startsWith('ERROR')) {
-        sendMessage(targetWindow, 'ocr_result', { success: true, text: result, box });
-      } else {
-        sendMessage(targetWindow, 'ocr_result', { success: false, error: result, box });
-      }
-    });
+    
+    // Use simple-io-plugin to read the image file
+    console.log('[BG] Attempting to read file:', filePath);
+    logOCR(`Attempting to read file: ${filePath}`, 'info');
+    
+    // Check what methods are available
+    const methods = Object.getOwnPropertyNames(simpleIOPlugin);
+    console.log('[BG] Available methods for file reading:', methods);
+    
+    // Use the correct Simple IO Plugin method for reading binary files (images)
+    if (typeof simpleIOPlugin.getBinaryFile === 'function') {
+      console.log('[BG] Using getBinaryFile method to read image');
+      logOCR('Using getBinaryFile method to read image', 'info');
+      
+      simpleIOPlugin.getBinaryFile(filePath, result => {
+        handleFileReadResult(result, targetWindow, box);
+      });
+    } else if (typeof simpleIOPlugin.getTextFile === 'function') {
+      console.log('[BG] Using getTextFile method as fallback');
+      logOCR('Using getTextFile method as fallback', 'warn');
+      
+      simpleIOPlugin.getTextFile(filePath, result => {
+        handleFileReadResult(result, targetWindow, box);
+      });
+    } else {
+      console.error('[BG] No file reading method found in plugin');
+      logOCR('No file reading method found in plugin', 'error');
+      sendMessage(targetWindow, 'ocr_result', { 
+        success: false, 
+        error: 'No file reading method available in plugin', 
+        box 
+      });
+    }
+    
     // Always send a draw_debug_box for UI feedback
     sendMessage(targetWindow, 'draw_debug_box', box);
+  }
+  
+  // Add a test message handler for debugging
+  if (message.id === 'test_plugin') {
+    console.log('[BG] Received test_plugin message from:', message.source);
+    logOCR(`Received test_plugin message from: ${message.source}`, 'info');
+    
+    if (!simpleIOPlugin) {
+      console.log('[BG] Plugin not loaded, sending error response');
+      logOCR('Plugin not loaded, sending error response', 'error');
+      // Send to desktop window since that's where the test button is
+      sendMessage('desktop', 'plugin_test_result', { 
+        success: false, 
+        error: 'Simple IO plugin not loaded' 
+      });
+      return;
+    }
+    
+    // Test the plugin with a simple operation
+    console.log('[BG] Testing Simple IO Plugin...');
+    logOCR('Testing Simple IO Plugin...', 'info');
+    
+    // Check if the plugin has the expected methods
+    const methods = Object.getOwnPropertyNames(simpleIOPlugin);
+    const fileMethods = methods.filter(m => m.toLowerCase().includes('file') || m.toLowerCase().includes('read') || m.toLowerCase().includes('binary') || m.toLowerCase().includes('text'));
+    
+    console.log('[BG] Available plugin methods:', methods);
+    console.log('[BG] File-related methods:', fileMethods);
+    logOCR(`Available plugin methods: ${methods.join(', ')}`, 'debug');
+    logOCR(`File-related methods: ${fileMethods.join(', ')}`, 'info');
+    
+    // Send to desktop window since that's where the test button is
+    sendMessage('desktop', 'plugin_test_result', { 
+      success: true, 
+      methods: methods,
+      fileMethods: fileMethods,
+      message: 'Plugin test completed - getBinaryFile available for OCR!'
+    });
+  }
+  
+  // Add OCR test handler
+  if (message.id === 'test_ocr') {
+    console.log('[BG] Received test_ocr message');
+    logOCR('Received test_ocr message - starting OCR test', 'info');
+    
+    // Trigger OCR manually for testing
+    const timestamp = new Date().toISOString();
+    performGameScreenshotOCR('test', timestamp);
+  }
+  
+  // Add screenshot test handler
+  if (message.id === 'test_screenshot') {
+    console.log('[BG] Received test_screenshot message');
+    logOCR('Received test_screenshot message - testing screenshot methods', 'info');
+    
+    // Test different screenshot methods
+    testScreenshotMethods();
   }
 });

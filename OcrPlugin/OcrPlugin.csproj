@@ -9,7 +9,4 @@
   <ItemGroup>
     <Reference Include="System.Drawing" />
   </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Tesseract" Version="4.1.1" />
-  </ItemGroup>
 </Project> 

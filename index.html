@@ -12,6 +12,13 @@
   <div id="username-display" class="round-status">Username: Not detected yet…</div>
 
   <div id="round-status" class="round-status">Waiting for game...</div>
+  
+  <div id="ocr-results" class="ocr-results">
+    <h3>OCR Results</h3>
+    <div id="usernames-list" class="usernames-list">
+      <div class="no-results">No usernames detected yet...</div>
+    </div>
+  </div>
 
   <svg width="240" height="240" viewBox="0 0 240 240">
     <circle cx="120" cy="120" r="100" stroke="#222" stroke-width="20" fill="none"/>
@@ -24,6 +31,9 @@
   <div class="button-row">
     <button class="btn eliminate-btn">Simulate Kill</button>
     <button class="btn death-btn">Simulate Death</button>
+    <button class="btn" id="test-plugin-btn">Test Plugin</button>
+    <button class="btn" id="test-ocr-btn">Test OCR</button>
+    <button class="btn" id="test-screenshot-btn">Test Screenshot</button>
   </div>
 
   <!-- Fix: Move scripts to the bottom -->
