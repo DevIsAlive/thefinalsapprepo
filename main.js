@@ -37,7 +37,7 @@ async function runWindowScreenshotOCR(handle, timestamp) {
   try {
     overwolf.media.takeWindowsScreenshotByHandle(
       handle,
-      { saveToDisk: true },
+      false,
       result => {
         const now = new Date().toISOString();
         logOCR({ message: `[${now}] Screenshot result: success=${result.success}, url=${result.url}, error=${result.error}` });
@@ -49,6 +49,11 @@ async function runWindowScreenshotOCR(handle, timestamp) {
         // Take screenshot of the entire game window
         const screenshotPath = result.path;
         logOCR({ message: `📸 Screenshot saved: ${screenshotPath}`, level: 'info' });
+        // --- Fix: Check if screenshotPath is the same as last time ---
+        if (window._lastScreenshotPath === screenshotPath) {
+          logOCR({ message: `⚠️ Screenshot path did not change! Possible stale image.`, level: 'warn' });
+        }
+        window._lastScreenshotPath = screenshotPath;
 
         // Process each scan box
         for (const box of scanBoxes) {
@@ -81,10 +86,15 @@ async function runWindowScreenshotOCR(handle, timestamp) {
               );
             };
             img.onerror = (e) => {
-              logOCR({ message: `❌ Image load error: ${e?.message || e}`, level: 'error' });
+              // --- Fix: Log the full error event for better debugging ---
+              logOCR({ message: `❌ Image load error: ${e?.message || e?.type || e}`, level: 'error', event: JSON.stringify(e) });
             };
             // Use file:/// protocol for local files
-            img.src = 'file:///' + screenshotPath.replace(/\\/g, '/');
+            // --- Fix: Increase delay to 500ms to ensure file is written ---
+            setTimeout(() => {
+              const cacheBuster = `?_cb=${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+              img.src = 'file:///' + screenshotPath.replace(/\\/g, '/') + cacheBuster;
+            }, 500); // 500ms delay (was 100ms)
           } catch (err) {
             logOCR({ message: `❌ Box processing error: ${err.message}`, level: 'error' });
           }

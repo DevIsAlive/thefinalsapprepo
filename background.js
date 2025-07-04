@@ -128,7 +128,7 @@ function requestOverlayOCR() {
       handle
     ) {
       sendMessage('ingame_overlay', 'initiate_ocr', { handle, timestamp });
-    } else {
+      } else {
       logOCR(`[${timestamp}] Failed to get game handle for OCR. isRunning: ${result?.isRunning}, classId: ${result?.classId}, handle: ${handle}`, 'error');
     }
   });
