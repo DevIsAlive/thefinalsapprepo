@@ -42,8 +42,8 @@
         "in_game_only": true,
         "resizable": false,
         "transparent": true,
-        "size": { "width": 800, "height": 400 },
-        "start_position": { "left": 100, "top": 100 },
+        "size": { "width": 1920, "height": 1080 },
+        "start_position": { "left": 0, "top": 0 },
         "alwaysOnTop": true
       },
       "ocr_log": {

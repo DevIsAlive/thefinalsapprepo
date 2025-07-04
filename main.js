@@ -27,6 +27,92 @@ const scanBoxes = [
   { x: 791, y: 68,  width: 384, height: 33 }
 ];
 
+// New function using takeWindowsScreenshotByHandle
+async function runWindowScreenshotOCR() {
+  try {
+    logOCR({ message: `🔍 Starting window screenshot OCR...`, level: 'info' });
+    
+    // First, get the game window handle
+    const gameInfo = await new Promise((resolve, reject) => {
+      overwolf.games.getRunningGameInfo(result => {
+        if (result.success && result.gameInfo) {
+          resolve(result.gameInfo);
+        } else {
+          reject(new Error('Failed to get game info'));
+        }
+      });
+    });
+
+    logOCR({ message: `🎮 Game window found: ${gameInfo.title}`, level: 'info' });
+
+    // Take screenshot of the entire game window
+    const screenshotPath = await new Promise((resolve, reject) => {
+      overwolf.media.takeWindowsScreenshotByHandle(gameInfo.handle, result => {
+        if (result.success) {
+          resolve(result.path);
+        } else {
+          reject(new Error(`Screenshot failed: ${result.error}`));
+        }
+      });
+    });
+
+    logOCR({ message: `📸 Screenshot saved: ${screenshotPath}`, level: 'info' });
+
+    // Process each scan box
+    for (const box of scanBoxes) {
+      try {
+        drawOCRBox(box);
+        logOCR({ message: `🔍 Processing box at (${box.x}, ${box.y})...`, level: 'info' });
+
+        // Create a canvas to crop the screenshot
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = `file://${screenshotPath}`;
+        });
+
+        // Create canvas and crop the image
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = box.width;
+        canvas.height = box.height;
+        
+        // Draw the cropped portion
+        ctx.drawImage(img, box.x, box.y, box.width, box.height, 0, 0, box.width, box.height);
+        
+        // Convert canvas to blob for Tesseract
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+        
+        // Process with Tesseract
+        const result = await Tesseract.recognize(blob, 'eng', {
+          logger: m => logOCR({ message: `[Tesseract] ${m.status} - ${Math.floor(m.progress * 100)}%`, level: 'debug' })
+        });
+
+        const text = result.data.text.trim().replace(/\n/g, ' ');
+        const match = text.match(/[A-Za-z0-9_]{3,20}/);
+
+        if (match) {
+          const username = match[0];
+          logOCR({ message: `✅ Username detected: ${username}`, level: 'success' });
+          overwolf.windows.sendMessage('background', 'username_found', username, () => {});
+          overwolf.windows.sendMessage('ocr_log', 'ocr_log_update', { message: `✅ Username detected: ${username}`, level: 'success' }, () => {});
+          return;
+        } else {
+          logOCR({ message: `⚠️ No match found in box (${box.x},${box.y})`, level: 'warn' });
+        }
+      } catch (err) {
+        logOCR({ message: `❌ Box processing error: ${err.message}`, level: 'error' });
+      }
+    }
+  } catch (err) {
+    logOCR({ message: `❌ Window screenshot OCR error: ${err.message}`, level: 'error' });
+  }
+}
+
+// Keep existing function for fallback
 async function runOverlayOCR() {
   for (const box of scanBoxes) {
     try {
@@ -198,7 +284,7 @@ overwolf.windows.onMessageReceived.addListener(message => {
   }
 
   if (message.id === 'initiate_ocr') {
-    runOverlayOCR();
+    runWindowScreenshotOCR();
   }
 });
 
@@ -227,7 +313,7 @@ startAnimation();
 if (window.name === 'ingame_overlay') {
   overwolf.windows.onMessageReceived.addListener((message) => {
     if (message.id === 'initiate_ocr') {
-      runOverlayOCR();
+      runWindowScreenshotOCR();
     }
   });
 }
