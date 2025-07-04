@@ -24,3 +24,22 @@ This is a high-fidelity Overwolf web app designed for THE FINALS, featuring a mo
 - Edit `manifest.json` to update window files, icons, or add permissions/features.
 
 For more, see [Overwolf Web App Docs](https://overwolf.github.io/docs/api/overwolf-web/).
+
+## Deploying the OCR Plugin DLL to Your Overwolf App
+
+1. **Copy these files from `OcrPlugin/bin/Release/net48/` to your app root (`/AAAFinalsApp/`):**
+   - `OcrPlugin.dll`
+   - `Tesseract.dll`
+2. **Copy these files from `OcrPlugin/bin/Release/net48/x64/` to your app root:**
+   - `leptonica-1.80.0.dll`
+   - `tesseract41.dll`
+3. **Ensure `/AAAFinalsApp/tessdata/eng.traineddata` exists.**
+
+Your app root should now contain:
+- OcrPlugin.dll
+- Tesseract.dll
+- leptonica-1.80.0.dll
+- tesseract41.dll
+- tessdata/eng.traineddata
+
+This will ensure your Overwolf app can load and use the OCR plugin with all dependencies.

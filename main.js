@@ -27,131 +27,6 @@ const scanBoxes = [
   { x: 791, y: 68,  width: 384, height: 33 }
 ];
 
-// New function using takeWindowsScreenshotByHandle
-async function runWindowScreenshotOCR(handle, timestamp) {
-  logOCR({ message: `[runWindowScreenshotOCR] Called with handle: ${handle}, timestamp: ${timestamp}` });
-  if (!handle) {
-    logOCR({ message: 'No game window handle provided for OCR', level: 'error' });
-    return;
-  }
-  try {
-    overwolf.media.takeWindowsScreenshotByHandle(
-      handle,
-      false,
-      result => {
-        const now = new Date().toISOString();
-        logOCR({ message: `[${now}] Screenshot result: success=${result.success}, url=${result.url}, error=${result.error}` });
-        if (!result.success) {
-          logOCR({ message: `Window screenshot OCR error: ${result.error}`, level: 'error' });
-          return;
-        }
-        logOCR({ message: `🔍 Starting window screenshot OCR...`, level: 'info' });
-        // Take screenshot of the entire game window
-        const screenshotPath = result.path;
-        logOCR({ message: `📸 Screenshot saved: ${screenshotPath}`, level: 'info' });
-        // --- Fix: Check if screenshotPath is the same as last time ---
-        if (window._lastScreenshotPath === screenshotPath) {
-          logOCR({ message: `⚠️ Screenshot path did not change! Possible stale image.`, level: 'warn' });
-        }
-        window._lastScreenshotPath = screenshotPath;
-
-        // Process each scan box
-        for (const box of scanBoxes) {
-          try {
-            drawOCRBox(box);
-            logOCR({ message: `🔍 Processing box at (${box.x}, ${box.y})...`, level: 'info' });
-
-            // Load the screenshot directly from the file path
-            const img = new Image();
-            img.onload = () => {
-              // Create canvas and crop the image
-              const canvas = document.createElement('canvas');
-              const ctx = canvas.getContext('2d');
-              canvas.width = box.width;
-              canvas.height = box.height;
-              
-              // Draw the cropped portion
-              ctx.drawImage(img, box.x, box.y, box.width, box.height, 0, 0, box.width, box.height);
-              
-              // Convert canvas to blob for Tesseract
-              const blob = canvas.toBlob(
-                b => {
-                  if (b) {
-                    processOCR(b);
-                  } else {
-                    logOCR({ message: '❌ Canvas toBlob error: blob is null', level: 'error' });
-                  }
-                },
-                'image/jpeg'
-              );
-            };
-            img.onerror = (e) => {
-              // --- Fix: Log the full error event for better debugging ---
-              logOCR({ message: `❌ Image load error: ${e?.message || e?.type || e}`, level: 'error', event: JSON.stringify(e) });
-            };
-            // Use file:/// protocol for local files
-            // --- Fix: Increase delay to 500ms to ensure file is written ---
-            setTimeout(() => {
-              const cacheBuster = `?_cb=${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-              img.src = 'file:///' + screenshotPath.replace(/\\/g, '/') + cacheBuster;
-            }, 500); // 500ms delay (was 100ms)
-          } catch (err) {
-            logOCR({ message: `❌ Box processing error: ${err.message}`, level: 'error' });
-          }
-        }
-      }
-    );
-  } catch (err) {
-    logOCR({ message: `Window screenshot OCR error: ${err.message}`, level: 'error' });
-  }
-}
-
-// Keep existing function for fallback
-async function runOverlayOCR() {
-  for (const box of scanBoxes) {
-    try {
-      drawOCRBox(box);
-      logOCR({ message: `🔍 Scanning box at (${box.x}, ${box.y})...`, level: 'info' });
-
-      const screenshotParams = {
-        roundAwayFromZero: true,
-        crop: {
-          x: box.x,
-          y: box.y,
-          width: box.width,
-          height: box.height
-        }
-      };
-
-      const url = await new Promise((resolve, reject) => {
-        overwolf.media.getScreenshotUrl(screenshotParams, res => {
-          if (res.success) resolve(res.url);
-          else reject(new Error(`getScreenshotUrl failed: ${res.error}`));
-        });
-      });
-
-      const result = await Tesseract.recognize(url, 'eng', {
-        logger: m => logOCR({ message: `[Tesseract] ${m.status} - ${Math.floor(m.progress * 100)}%`, level: 'debug' })
-      });
-
-      const text = result.data.text.trim().replace(/\n/g, ' ');
-      const match = text.match(/[A-Za-z0-9_]{3,20}/);
-
-      if (match) {
-        const username = match[0];
-        logOCR({ message: `✅ Username detected: ${username}`, level: 'success' });
-        overwolf.windows.sendMessage('background', 'username_found', username, () => {});
-        overwolf.windows.sendMessage('ocr_log', 'ocr_log_update', { message: `✅ Username detected: ${username}`, level: 'success' }, () => {});
-        return;
-      } else {
-        logOCR({ message: `⚠️ No match found in box (${box.x},${box.y})`, level: 'warn' });
-      }
-    } catch (err) {
-      logOCR({ message: `❌ OCR error: ${err.message}`, level: 'error' });
-    }
-  }
-}
-
 // --- Animate Donut ---
 function animateDonut(timestamp) {
   if (!animationStartTime) animationStartTime = timestamp;
@@ -223,6 +98,15 @@ overwolf.windows.getCurrentWindow(result => {
   console.log('[Main] Running in window:', result.window.name);
 });
 
+// --- Request OCR from background window using plugin ---
+function requestOcrFromBackground(filePath, box) {
+  overwolf.windows.getCurrentWindow(result => {
+    const windowName = result.window.name;
+    overwolf.windows.sendMessage('background', 'start_ocr', { filePath, box, targetWindow: windowName }, () => {});
+  });
+}
+
+// --- Listen for OCR result and debug box from background ---
 overwolf.windows.onMessageReceived.addListener(message => {
   if (message.id === 'game_event') {
     const data = message.content;
@@ -281,7 +165,19 @@ overwolf.windows.onMessageReceived.addListener(message => {
     console.log('[Main] OCR initiated from background');
     const handle = message.content && message.content.handle;
     const timestamp = message.content && message.content.timestamp;
-    runWindowScreenshotOCR(handle, timestamp);
+    // Placeholder for the removed runWindowScreenshotOCR function
+  }
+
+  if (message.id === 'ocr_result') {
+    if (message.content.success) {
+      // Show OCR result in your UI (e.g., log or display)
+      console.log('OCR result:', message.content.text);
+      // Optionally, display in overlay
+    } else {
+      console.error('OCR error:', message.content.error);
+    }
+    // Optionally, draw the debug box (redundant if background already sends it)
+    if (message.content.box) drawOCRBox(message.content.box);
   }
 });
 

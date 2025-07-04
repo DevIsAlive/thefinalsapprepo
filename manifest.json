@@ -67,5 +67,11 @@
         "start_minimized": false
       }
     ]
+  },
+  "extra-objects": {
+    "OcrPlugin": {
+      "path": "OcrPlugin.dll",
+      "class": "overwolf.plugins.OcrPlugin"
+    }
   }
 }

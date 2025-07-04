@@ -128,7 +128,7 @@ function requestOverlayOCR() {
       handle
     ) {
       sendMessage('ingame_overlay', 'initiate_ocr', { handle, timestamp });
-      } else {
+    } else {
       logOCR(`[${timestamp}] Failed to get game handle for OCR. isRunning: ${result?.isRunning}, classId: ${result?.classId}, handle: ${handle}`, 'error');
     }
   });
@@ -150,3 +150,34 @@ function handleGameEvent(eventData) {
     startUsernamePolling();
   }
 }
+
+// --- OCR Plugin Integration ---
+let ocrPlugin = null;
+
+overwolf.extensions.current.getExtraObject('OcrPlugin', plugin => {
+  if (plugin && plugin.instance) {
+    ocrPlugin = plugin.instance;
+    console.log('[BG] OCR Plugin loaded');
+  } else {
+    console.error('[BG] Failed to load OCR Plugin');
+  }
+});
+
+overwolf.windows.onMessageReceived.addListener((message) => {
+  if (message.id === 'start_ocr') {
+    const { filePath, box, targetWindow } = message.content || {};
+    if (!ocrPlugin) {
+      sendMessage(targetWindow, 'ocr_result', { success: false, error: 'OCR plugin not loaded', box });
+      return;
+    }
+    ocrPlugin.OcrRegion(filePath, box.x, box.y, box.width, box.height, result => {
+      if (result && typeof result === 'string' && !result.startsWith('ERROR')) {
+        sendMessage(targetWindow, 'ocr_result', { success: true, text: result, box });
+      } else {
+        sendMessage(targetWindow, 'ocr_result', { success: false, error: result, box });
+      }
+    });
+    // Always send a draw_debug_box for UI feedback
+    sendMessage(targetWindow, 'draw_debug_box', box);
+  }
+});
