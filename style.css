@@ -616,6 +616,65 @@ body {
   padding: 20px;
 }
 
+/* Test Results Styling */
+.test-results {
+  margin: 20px auto;
+  width: 300px;
+  background: rgba(30,32,40,0.55);
+  border-radius: 13px;
+  border: 2px solid #23233a;
+  backdrop-filter: blur(8px) saturate(1.2);
+  padding: 15px;
+  box-shadow: 0 2px 16px #00d4ff18, 0 1px 8px #18181f33;
+}
+
+.test-results h3 {
+  margin: 0 0 15px 0;
+  color: #00D4FF;
+  font-size: 1.1rem;
+  text-align: center;
+  font-weight: 600;
+}
+
+.test-status {
+  padding: 10px;
+  margin: 10px 0;
+  border-radius: 8px;
+  font-weight: 600;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.test-status.success {
+  background: rgba(57, 255, 20, 0.2);
+  color: #39FF14;
+  border: 1px solid #39FF1433;
+}
+
+.test-status.error {
+  background: rgba(255, 42, 42, 0.2);
+  color: #FF2A2A;
+  border: 1px solid #FF2A2A33;
+}
+
+.test-status.info {
+  background: rgba(0, 212, 255, 0.2);
+  color: #00D4FF;
+  border: 1px solid #00D4FF33;
+}
+
+.test-log {
+  max-height: 150px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 8px;
+  padding: 10px;
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: #E6E6E6;
+  border: 1px solid #23233a;
+}
+
 /* Debug box styling */
 .debug-box {
   position: absolute;

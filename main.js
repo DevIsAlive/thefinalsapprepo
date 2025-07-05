@@ -27,6 +27,192 @@ const scanBoxes = [
   { x: 791, y: 68,  width: 384, height: 33 }
 ];
 
+// --- Custom OCR Plugin Integration ---
+let ocrPlugin = null;
+
+function initializeOcrPlugin() {
+  overwolf.extensions.current.getExtraObject('ocr-plugin', (result) => {
+    if (result.status === 'success') {
+      ocrPlugin = result.object;
+      console.log('[Main] Custom OCR plugin initialized successfully');
+      
+      // Test the plugin
+      ocrPlugin.Test((testResult) => {
+        console.log('[Main] OCR Plugin test result:', JSON.stringify(testResult, null, 2));
+        if (testResult.success && testResult.engineInitialized) {
+          console.log('[Main] Tesseract engine is ready');
+        } else {
+          console.error('[Main] Tesseract engine failed to initialize');
+          console.error('[Main] Test result details:', testResult);
+          if (testResult.errorDetails) {
+            console.error('[Main] Error details from plugin log:', testResult.errorDetails);
+          }
+        }
+      });
+    } else {
+      console.error('[Main] Failed to initialize OCR plugin:', result.error);
+    }
+  });
+}
+
+// Initialize plugin when script loads
+initializeOcrPlugin();
+
+// --- Custom Plugin OCR Functions ---
+function takeScreenshotWithPlugin() {
+  return new Promise((resolve) => {
+    if (!ocrPlugin) {
+      resolve(null);
+      return;
+    }
+    
+    ocrPlugin.TakeScreenshot((result) => {
+      if (result.success) {
+        console.log('[Main] Plugin screenshot taken:', result.path);
+        resolve(result.path);
+      } else {
+        console.error('[Main] Plugin screenshot failed:', result.error);
+        resolve(null);
+      }
+    });
+  });
+}
+
+function takeGameScreenshotWithPlugin() {
+  return new Promise((resolve) => {
+    if (!ocrPlugin) {
+      resolve(null);
+      return;
+    }
+    
+    // Get game window handle using Overwolf API
+    overwolf.games.getRunningGameInfo(info => {
+      if (info && info.isRunning && info.gameInfo && info.gameInfo.handle) {
+        const handle = info.gameInfo.handle;
+        console.log('[Main] Got game window handle:', handle);
+        
+        // Use the new TakeScreenshotByHandle method
+        ocrPlugin.TakeScreenshotByHandle(handle, (result) => {
+          if (result.success) {
+            console.log('[Main] Plugin game screenshot by handle taken:', result.path);
+            resolve(result.path);
+          } else {
+            console.error('[Main] Plugin game screenshot by handle failed:', result.error);
+            resolve(null);
+          }
+        });
+      } else {
+        console.error('[Main] No game window handle available');
+        resolve(null);
+      }
+    });
+  });
+}
+
+function performOcrWithPlugin(imagePath, x, y, width, height) {
+  return new Promise((resolve) => {
+    if (!ocrPlugin) {
+      resolve('');
+      return;
+    }
+    
+    ocrPlugin.PerformOCR(imagePath, x, y, width, height, (result) => {
+      if (result.success) {
+        console.log('[Main] Plugin OCR result:', result.text, 'confidence:', result.confidence);
+        resolve(result.text);
+      } else {
+        console.error('[Main] Plugin OCR failed:', result.error);
+        resolve('');
+      }
+    });
+  });
+}
+
+function scanUsernameRegionsWithPlugin(imagePath) {
+  return new Promise((resolve) => {
+    if (!ocrPlugin) {
+      resolve([]);
+      return;
+    }
+    
+    ocrPlugin.ScanUsernameRegions(imagePath, (result) => {
+      if (result.success) {
+        console.log('[Main] Plugin username scan results:', result.results);
+        resolve(result.results);
+      } else {
+        console.error('[Main] Plugin username scan failed:', result.error);
+        resolve([]);
+      }
+    });
+  });
+}
+
+function getGameWindowInfoWithPlugin() {
+  return new Promise((resolve) => {
+    if (!ocrPlugin) {
+      resolve(null);
+      return;
+    }
+    
+    ocrPlugin.GetGameWindowInfo((result) => {
+      if (result.success) {
+        console.log('[Main] Game window info:', result.windows);
+        resolve(result.windows);
+      } else {
+        console.error('[Main] Failed to get game window info:', result.error);
+        resolve(null);
+      }
+    });
+  });
+}
+
+// --- Updated Overlay OCR Polling with Custom Plugin ---
+let customPluginOcrPolling = false;
+
+function startCustomPluginOcrPolling() {
+  if (customPluginOcrPolling) return;
+  customPluginOcrPolling = true;
+  
+  const pollOcr = async () => {
+    if (!customPluginOcrPolling) return;
+    
+    // Try game screenshot first, fallback to full screen
+    let screenshotPath = await takeGameScreenshotWithPlugin();
+    if (!screenshotPath) {
+      screenshotPath = await takeScreenshotWithPlugin();
+    }
+    
+    if (screenshotPath) {
+      // Scan all username regions
+      const results = await scanUsernameRegionsWithPlugin(screenshotPath);
+      
+      // Process results
+      results.forEach((result) => {
+        const timestamp = new Date().toISOString();
+        console.log(`[Main] Custom plugin found: "${result.text}" in box ${result.boxIndex}`);
+        
+        // Send to desktop window
+        overwolf.windows.sendMessage('desktop', 'ocr_username_found', {
+          username: result.text,
+          box: result.region,
+          boxIndex: result.boxIndex,
+          timestamp: timestamp,
+          confidence: result.confidence
+        });
+      });
+    }
+    
+    // Continue polling
+    setTimeout(pollOcr, 2500);
+  };
+  
+  pollOcr();
+}
+
+function stopCustomPluginOcrPolling() {
+  customPluginOcrPolling = false;
+}
+
 // --- Animate Donut ---
 function animateDonut(timestamp) {
   if (!animationStartTime) animationStartTime = timestamp;
@@ -123,6 +309,13 @@ overwolf.windows.onMessageReceived.addListener(message => {
           })[data.status] || data.status;
           roundStatus.className = `overlay-status ${data.status}`;
         }
+        
+        // Start/stop overlay OCR based on game status
+        if (data.status === 'lobby') {
+          startCustomPluginOcrPolling();
+        } else if (data.status === 'summary') {
+          stopCustomPluginOcrPolling();
+        }
         break;
 
       case 'round_started':
@@ -216,30 +409,169 @@ function logOCR(message) {
 // First draw
 startAnimation();
 
+// Test results display functions
+function showTestResults() {
+  const testResults = document.getElementById('test-results');
+  if (testResults) {
+    testResults.style.display = 'block';
+  }
+}
+
+function updateTestStatus(message, type = 'info') {
+  const testStatus = document.getElementById('test-status');
+  if (testStatus) {
+    testStatus.textContent = message;
+    testStatus.className = `test-status ${type}`;
+  }
+}
+
+function addTestLog(message) {
+  const testLog = document.getElementById('test-log');
+  if (testLog) {
+    const timestamp = new Date().toLocaleTimeString();
+    testLog.innerHTML += `[${timestamp}] ${message}\n`;
+    testLog.scrollTop = testLog.scrollHeight;
+  }
+}
+
 // Add plugin test functionality
 const testPluginBtn = document.getElementById('test-plugin-btn');
 if (testPluginBtn) {
-  testPluginBtn.addEventListener('click', () => {
+  testPluginBtn.addEventListener('click', async () => {
     console.log('[Main] Testing plugin...');
-    overwolf.windows.sendMessage('background', 'test_plugin', {}, () => {});
+    showTestResults();
+    updateTestStatus('Testing plugin...', 'info');
+    addTestLog('Starting plugin test...');
+    
+    try {
+      // Test the custom OCR plugin directly
+      const result = await testCustomPlugin();
+      if (result.success) {
+        updateTestStatus('✅ Plugin working correctly', 'success');
+        addTestLog(`Plugin test successful: ${result.message}`);
+        if (result.engineInitialized) {
+          addTestLog('✅ Tesseract engine initialized successfully');
+        } else {
+          addTestLog('⚠️ Tesseract engine failed to initialize');
+          if (result.errorDetails) {
+            addTestLog(`Error details: ${result.errorDetails}`);
+          }
+        }
+      } else {
+        updateTestStatus('❌ Plugin test failed', 'error');
+        addTestLog(`Plugin test failed: ${result.error}`);
+      }
+    } catch (error) {
+      updateTestStatus('❌ Plugin test error', 'error');
+      addTestLog(`Plugin test error: ${error.message}`);
+    }
   });
 }
 
 // Add OCR test functionality
 const testOcrBtn = document.getElementById('test-ocr-btn');
 if (testOcrBtn) {
-  testOcrBtn.addEventListener('click', () => {
+  testOcrBtn.addEventListener('click', async () => {
     console.log('[Main] Testing OCR...');
-    overwolf.windows.sendMessage('background', 'test_ocr', {}, () => {});
+    showTestResults();
+    updateTestStatus('Testing OCR...', 'info');
+    addTestLog('Starting OCR test...');
+    
+    try {
+      const screenshotPath = await takeScreenshotWithPlugin();
+      if (screenshotPath) {
+        addTestLog(`Screenshot taken: ${screenshotPath}`);
+        
+        // Test OCR on a small region
+        const ocrResult = await performOcrWithPlugin(screenshotPath, 100, 100, 200, 50);
+        if (ocrResult.success) {
+          updateTestStatus('✅ OCR working correctly', 'success');
+          addTestLog(`OCR result: "${ocrResult.text}" (confidence: ${Math.round(ocrResult.confidence * 100)}%)`);
+        } else {
+          updateTestStatus('❌ OCR failed', 'error');
+          addTestLog(`OCR failed: ${ocrResult.error}`);
+        }
+      } else {
+        updateTestStatus('❌ Screenshot failed', 'error');
+        addTestLog('Failed to take screenshot');
+      }
+    } catch (error) {
+      updateTestStatus('❌ OCR test error', 'error');
+      addTestLog(`OCR test error: ${error.message}`);
+    }
   });
 }
 
 // Add screenshot test functionality
 const testScreenshotBtn = document.getElementById('test-screenshot-btn');
 if (testScreenshotBtn) {
-  testScreenshotBtn.addEventListener('click', () => {
+  testScreenshotBtn.addEventListener('click', async () => {
     console.log('[Main] Testing screenshot...');
-    overwolf.windows.sendMessage('background', 'test_screenshot', {}, () => {});
+    showTestResults();
+    updateTestStatus('Testing screenshot...', 'info');
+    addTestLog('Starting screenshot test...');
+    
+    try {
+      const screenshotPath = await takeScreenshotWithPlugin();
+      if (screenshotPath) {
+        updateTestStatus('✅ Screenshot working correctly', 'success');
+        addTestLog(`Screenshot saved to: ${screenshotPath}`);
+      } else {
+        updateTestStatus('❌ Screenshot failed', 'error');
+        addTestLog('Failed to take screenshot');
+      }
+    } catch (error) {
+      updateTestStatus('❌ Screenshot test error', 'error');
+      addTestLog(`Screenshot test error: ${error.message}`);
+    }
+  });
+}
+
+// Function to test the custom plugin
+async function testCustomPlugin() {
+  return new Promise((resolve) => {
+    if (window.customOcrPlugin) {
+      window.customOcrPlugin.Test((result) => {
+        resolve(result);
+      });
+    } else {
+      resolve({ success: false, error: 'Custom OCR plugin not available' });
+    }
+  });
+}
+
+// Add custom plugin OCR test functionality
+const testOverlayOcrBtn = document.getElementById('test-overlay-ocr');
+if (testOverlayOcrBtn) {
+  testOverlayOcrBtn.addEventListener('click', async () => {
+    console.log('[Main] Testing custom plugin OCR...');
+    
+    // Get game window info first
+    const gameWindows = await getGameWindowInfoWithPlugin();
+    if (gameWindows && gameWindows.length > 0) {
+      console.log('[Main] Found game windows:', gameWindows);
+    }
+    
+    // Try game screenshot first (now uses window handle)
+    let screenshotPath = await takeGameScreenshotWithPlugin();
+    if (!screenshotPath) {
+      console.log('[Main] Game screenshot by handle failed, trying full screen...');
+      screenshotPath = await takeScreenshotWithPlugin();
+    }
+    
+    if (screenshotPath) {
+      console.log('[Main] Screenshot taken, scanning username regions...');
+      const results = await scanUsernameRegionsWithPlugin(screenshotPath);
+      
+      if (results.length > 0) {
+        const resultText = results.map(r => `Box ${r.boxIndex}: "${r.text}" (${Math.round(r.confidence * 100)}%)`).join('\n');
+        alert(`OCR Results:\n${resultText}`);
+      } else {
+        alert('No usernames found in scan regions');
+      }
+    } else {
+      alert('Failed to take screenshot');
+    }
   });
 }
 

@@ -183,11 +183,13 @@ function startUsernamePolling() {
 openAllWindows();
 
 // Add a handler for game events to start polling on 'lobby' status
+// NOTE: OCR polling is now handled by the overlay instead of background
 function handleGameEvent(eventData) {
-  if (eventData.type === 'game_status' && eventData.status === 'lobby' && !ocrPollingActive) {
-    ocrPollingActive = true;
-    startUsernamePolling();
-  }
+  // Background OCR polling disabled - overlay handles OCR now
+  // if (eventData.type === 'game_status' && eventData.status === 'lobby' && !ocrPollingActive) {
+  //   ocrPollingActive = true;
+  //   startUsernamePolling();
+  // }
 }
 
 // Helper function to handle file read results

@@ -1,0 +1,10 @@
+{
+  "version": 2,
+  "dgSpecHash": "IVMt0Z2eLNU=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Kevin\\Documents\\AAAFinalsApp\\StandaloneTesseractTest\\StandaloneTesseractTest.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Kevin\\.nuget\\packages\\tesseract\\5.2.0\\tesseract.5.2.0.nupkg.sha512"
+  ],
+  "logs": []
+}

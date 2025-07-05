@@ -1,0 +1,8 @@
+is_global = true
+build_property.RootNamespace = StandaloneTesseractTest
+build_property.ProjectDir = C:\Users\Kevin\Documents\AAAFinalsApp\StandaloneTesseractTest\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.CsWinRTUseWindowsUIXamlProjections = false
+build_property.EffectiveAnalysisLevelStyle = 
+build_property.EnableCodeStyleSeverity = 
