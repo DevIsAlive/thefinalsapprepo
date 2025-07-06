@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>The Finals Assistant Background</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      overflow: hidden;
+    }
+    #background-status {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 5px 10px;
+      border-radius: 3px;
+      font-family: monospace;
+      font-size: 12px;
+      z-index: 10000;
+    }
+  </style>
+</head>
+<body>
+  <!-- Background status indicator (for debugging) -->
+  <div id="background-status">Background: Loading...</div>
+  
+  <!-- Load background script -->
+  <script src="background.js"></script>
+  
+  <script>
+    // Update status when background script loads
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('Background HTML DOM loaded');
+      const status = document.getElementById('background-status');
+      if (status) {
+        status.textContent = 'Background: Ready';
+        status.style.background = 'rgba(0, 100, 0, 0.8)';
+        
+        // Keep status visible for debugging
+        // setTimeout(() => {
+        //   status.style.opacity = '0';
+        //   status.style.transition = 'opacity 1s';
+        //   setTimeout(() => {
+        //     if (status.parentNode) {
+        //       status.parentNode.removeChild(status);
+        //     }
+        //   }, 1000);
+        // }, 3000);
+      }
+    });
+    
+    // Error handling
+    window.addEventListener('error', (event) => {
+      console.error('Background script error:', event.error);
+      const status = document.getElementById('background-status');
+      if (status) {
+        status.textContent = 'Background: Error - ' + event.error.message;
+        status.style.background = 'rgba(255, 0, 0, 0.8)';
+      }
+    });
+    
+    // Script load error handling
+    window.addEventListener('load', () => {
+      console.log('Background HTML fully loaded');
+    });
+  </script>
+</body>
+</html>

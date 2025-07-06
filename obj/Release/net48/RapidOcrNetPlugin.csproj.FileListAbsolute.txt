@@ -1,0 +1,6 @@
+C:\Users\Kevin\Documents\AAAFinalsApp\obj\Release\net48\RapidOcrNetPlugin.csproj.AssemblyReference.cache
+C:\Users\Kevin\Documents\AAAFinalsApp\obj\Release\net48\RapidOcrNetPlugin.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Kevin\Documents\AAAFinalsApp\obj\Release\net48\RapidOcrNetPlugin.AssemblyInfoInputs.cache
+C:\Users\Kevin\Documents\AAAFinalsApp\obj\Release\net48\RapidOcrNetPlugin.AssemblyInfo.cs
+C:\Users\Kevin\Documents\AAAFinalsApp\obj\Release\net48\RapidOcrNetPlugin.csproj.CoreCompileInputs.cache
+C:\Users\Kevin\Documents\AAAFinalsApp\obj\Release\net48\RapidOcrNetPlugin.sourcelink.json

@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "dgSpecHash": "CksVlb/73lo=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Kevin\\Documents\\AAAFinalsApp\\RapidOcrNet\\RapidOcrNet\\RapidOcrNet.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Kevin\\.nuget\\packages\\clipper2\\1.4.0\\clipper2.1.4.0.nupkg.sha512",
+    "C:\\Users\\Kevin\\.nuget\\packages\\microsoft.ml.onnxruntime\\1.18.1\\microsoft.ml.onnxruntime.1.18.1.nupkg.sha512",
+    "C:\\Users\\Kevin\\.nuget\\packages\\microsoft.ml.onnxruntime.managed\\1.18.1\\microsoft.ml.onnxruntime.managed.1.18.1.nupkg.sha512",
+    "C:\\Users\\Kevin\\.nuget\\packages\\skiasharp\\2.88.8\\skiasharp.2.88.8.nupkg.sha512",
+    "C:\\Users\\Kevin\\.nuget\\packages\\skiasharp.nativeassets.linux\\2.88.8\\skiasharp.nativeassets.linux.2.88.8.nupkg.sha512",
+    "C:\\Users\\Kevin\\.nuget\\packages\\skiasharp.nativeassets.macos\\2.88.8\\skiasharp.nativeassets.macos.2.88.8.nupkg.sha512",
+    "C:\\Users\\Kevin\\.nuget\\packages\\skiasharp.nativeassets.win32\\2.88.8\\skiasharp.nativeassets.win32.2.88.8.nupkg.sha512",
+    "C:\\Users\\Kevin\\.nuget\\packages\\system.buffers\\4.5.1\\system.buffers.4.5.1.nupkg.sha512",
+    "C:\\Users\\Kevin\\.nuget\\packages\\system.memory\\4.5.5\\system.memory.4.5.5.nupkg.sha512",
+    "C:\\Users\\Kevin\\.nuget\\packages\\system.numerics.vectors\\4.5.0\\system.numerics.vectors.4.5.0.nupkg.sha512",
+    "C:\\Users\\Kevin\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\4.5.3\\system.runtime.compilerservices.unsafe.4.5.3.nupkg.sha512"
+  ],
+  "logs": []
+}

@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notifier Overlay</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    .notifier-container {
+      position: absolute;
+      top: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .notifier-row {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 220px;
+      align-items: flex-start;
+    }
+    .notifier {
+      display: flex;
+      align-items: center;
+      background: rgba(26,26,26,0.95);
+      border-radius: 14px;
+      border: 2px solid #23233a;
+      box-shadow: 0 2px 16px #000a, 0 0 0 1.5px #23233a;
+      min-width: 180px;
+      min-height: 38px;
+      padding: 7px 18px 7px 12px;
+      opacity: 0;
+      filter: blur(8px);
+      animation: notifier-blur-in 0.5s cubic-bezier(.51,1.5,.68,1.01) forwards;
+      transition: box-shadow 0.2s, border 0.2s;
+    }
+    @keyframes notifier-blur-in {
+      from { opacity: 0; filter: blur(18px); transform: scale(0.92); }
+      to { opacity: 1; filter: blur(0); transform: scale(1); }
+    }
+    .notifier-dot {
+      width: 9px; height: 9px; border-radius: 50%; margin-right: 10px;
+      box-shadow: 0 0 8px 2px currentColor;
+      flex-shrink: 0;
+    }
+    .notifier-elimination .notifier-dot { background: #39FF14; color: #39FF14; }
+    .notifier-death .notifier-dot { background: #FF2A2A; color: #FF2A2A; }
+    .notifier-content {
+      display: flex;
+      flex-direction: row;
+      align-items: baseline;
+      gap: 7px;
+    }
+    .notifier-label {
+      font-family: 'Inter', sans-serif;
+      font-weight: 700;
+      font-size: 1.1rem;
+      letter-spacing: 0.01em;
+      text-transform: capitalize;
+      margin-right: 2px;
+      filter: drop-shadow(0 0 3px currentColor);
+    }
+    .notifier-elimination .notifier-label { color: #39FF14; }
+    .notifier-death .notifier-label { color: #FF2A2A; }
+    .notifier-time {
+      font-family: 'Inter', sans-serif;
+      font-weight: 400;
+      font-size: 1.02rem;
+      color: #E6E6E6bb;
+      margin-left: 2px;
+      letter-spacing: 0.01em;
+    }
+    .notifier-seeall {
+      pointer-events: auto;
+      margin-top: 10px;
+      padding: 4px 18px;
+      border-radius: 10px;
+      border: none;
+      background: rgba(0,212,255,0.12);
+      color: #00D4FF;
+      font-family: 'Inter', sans-serif;
+      font-weight: 500;
+      font-size: 1rem;
+      cursor: pointer;
+      box-shadow: 0 2px 8px #00D4FF22;
+      transition: background 0.18s, color 0.18s, box-shadow 0.18s;
+      outline: none;
+    }
+    .notifier-seeall:hover {
+      background: rgba(0,212,255,0.22);
+      color: #fff;
+      box-shadow: 0 2px 16px #00D4FF33;
+    }
+  </style>
+</head>
+<body>
+  <div class="notifier-container">
+    <div class="notifier-row" id="notifier-row"></div>
+    <button class="notifier-seeall" id="notifier-seeall">See all</button>
+  </div>
+  <script src="notifier.js"></script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9369d5af1a4a81e1',t:'MTc0NTcwOTg3Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+</body>
+</html>
