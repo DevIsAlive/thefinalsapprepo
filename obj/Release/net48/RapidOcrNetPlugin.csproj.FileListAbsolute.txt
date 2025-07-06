@@ -4,3 +4,7 @@ C:\Users\Kevin\Documents\AAAFinalsApp\obj\Release\net48\RapidOcrNetPlugin.Assemb
 C:\Users\Kevin\Documents\AAAFinalsApp\obj\Release\net48\RapidOcrNetPlugin.AssemblyInfo.cs
 C:\Users\Kevin\Documents\AAAFinalsApp\obj\Release\net48\RapidOcrNetPlugin.csproj.CoreCompileInputs.cache
 C:\Users\Kevin\Documents\AAAFinalsApp\obj\Release\net48\RapidOcrNetPlugin.sourcelink.json
+C:\Users\Kevin\Documents\AAAFinalsApp\bin\Release\net48\RapidOcrNetPlugin.dll
+C:\Users\Kevin\Documents\AAAFinalsApp\bin\Release\net48\RapidOcrNetPlugin.pdb
+C:\Users\Kevin\Documents\AAAFinalsApp\obj\Release\net48\RapidOcrNetPlugin.dll
+C:\Users\Kevin\Documents\AAAFinalsApp\obj\Release\net48\RapidOcrNetPlugin.pdb

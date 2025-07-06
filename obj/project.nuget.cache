@@ -1,44 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "PSwgHYmBHXU=",
-  "success": false,
+  "dgSpecHash": "LLJrQGKkkS4=",
+  "success": true,
   "projectFilePath": "C:\\Users\\Kevin\\Documents\\AAAFinalsApp\\RapidOcrNetPlugin.csproj",
-  "expectedPackageFiles": [
-    "C:\\Users\\Kevin\\.nuget\\packages\\clipper2\\1.4.0\\clipper2.1.4.0.nupkg.sha512",
-    "C:\\Users\\Kevin\\.nuget\\packages\\microsoft.ml.onnxruntime\\1.16.3\\microsoft.ml.onnxruntime.1.16.3.nupkg.sha512",
-    "C:\\Users\\Kevin\\.nuget\\packages\\microsoft.ml.onnxruntime.managed\\1.18.1\\microsoft.ml.onnxruntime.managed.1.18.1.nupkg.sha512",
-    "C:\\Users\\Kevin\\.nuget\\packages\\skiasharp\\2.88.7\\skiasharp.2.88.7.nupkg.sha512",
-    "C:\\Users\\Kevin\\.nuget\\packages\\skiasharp.nativeassets.linux\\2.88.8\\skiasharp.nativeassets.linux.2.88.8.nupkg.sha512",
-    "C:\\Users\\Kevin\\.nuget\\packages\\skiasharp.nativeassets.macos\\2.88.7\\skiasharp.nativeassets.macos.2.88.7.nupkg.sha512",
-    "C:\\Users\\Kevin\\.nuget\\packages\\skiasharp.nativeassets.win32\\2.88.7\\skiasharp.nativeassets.win32.2.88.7.nupkg.sha512",
-    "C:\\Users\\Kevin\\.nuget\\packages\\system.buffers\\4.5.1\\system.buffers.4.5.1.nupkg.sha512",
-    "C:\\Users\\Kevin\\.nuget\\packages\\system.drawing.common\\7.0.0\\system.drawing.common.7.0.0.nupkg.sha512",
-    "C:\\Users\\Kevin\\.nuget\\packages\\system.memory\\4.5.5\\system.memory.4.5.5.nupkg.sha512",
-    "C:\\Users\\Kevin\\.nuget\\packages\\system.numerics.vectors\\4.5.0\\system.numerics.vectors.4.5.0.nupkg.sha512",
-    "C:\\Users\\Kevin\\.nuget\\packages\\system.runtime.compilerservices.unsafe\\4.5.3\\system.runtime.compilerservices.unsafe.4.5.3.nupkg.sha512"
-  ],
-  "logs": [
-    {
-      "code": "NU1605",
-      "level": "Error",
-      "message": "Warning As Error: Detected package downgrade: Microsoft.ML.OnnxRuntime from 1.18.1 to 1.16.3. Reference the package directly from the project to select a different version. \r\n RapidOcrNetPlugin -> RapidOcrNet -> Microsoft.ML.OnnxRuntime (>= 1.18.1) \r\n RapidOcrNetPlugin -> Microsoft.ML.OnnxRuntime (>= 1.16.3)",
-      "projectPath": "C:\\Users\\Kevin\\Documents\\AAAFinalsApp\\RapidOcrNetPlugin.csproj",
-      "filePath": "C:\\Users\\Kevin\\Documents\\AAAFinalsApp\\RapidOcrNetPlugin.csproj",
-      "libraryId": "Microsoft.ML.OnnxRuntime",
-      "targetGraphs": [
-        ".NETFramework,Version=v4.8"
-      ]
-    },
-    {
-      "code": "NU1605",
-      "level": "Error",
-      "message": "Warning As Error: Detected package downgrade: SkiaSharp from 2.88.8 to 2.88.7. Reference the package directly from the project to select a different version. \r\n RapidOcrNetPlugin -> RapidOcrNet -> SkiaSharp (>= 2.88.8) \r\n RapidOcrNetPlugin -> SkiaSharp (>= 2.88.7)",
-      "projectPath": "C:\\Users\\Kevin\\Documents\\AAAFinalsApp\\RapidOcrNetPlugin.csproj",
-      "filePath": "C:\\Users\\Kevin\\Documents\\AAAFinalsApp\\RapidOcrNetPlugin.csproj",
-      "libraryId": "SkiaSharp",
-      "targetGraphs": [
-        ".NETFramework,Version=v4.8"
-      ]
-    }
-  ]
+  "expectedPackageFiles": [],
+  "logs": []
 }
