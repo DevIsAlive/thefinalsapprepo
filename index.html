@@ -7,7 +7,6 @@
 </head>
 <body>
   
-  <button id="open-ocr-log" class="btn">Open OCR Log</button>
   <h1>The Finals - Desktop App</h1>
   <div id="username-display" class="round-status">Username: Not detected yet…</div>
 
@@ -18,36 +17,6 @@
     <div id="usernames-list" class="usernames-list">
       <div class="no-results">No usernames detected yet...</div>
     </div>
-  </div>
-
-  <div id="test-results" class="test-results" style="display: none;">
-    <h3>Plugin Test Results</h3>
-    <div id="test-status" class="test-status">Ready to test...</div>
-    <div id="test-log" class="test-log"></div>
-  </div>
-
-  <!-- OCR Test Section -->
-  <div id="ocr-test-section" class="ocr-test-section" style="display: none;">
-    <h3>OCR.space API Test</h3>
-    <div class="api-key-section">
-      <label for="api-key">API Key:</label>
-      <input type="text" id="api-key" value="K85859077088957" placeholder="Enter your API key">
-    </div>
-    
-    <div class="upload-section" id="upload-section">
-      <p>Click to select an image or drag and drop</p>
-      <input type="file" id="file-input" accept="image/*" style="display: none;">
-    </div>
-
-    <div id="image-container" style="display: none;">
-      <img id="image-preview" class="image-preview">
-      <button onclick="testOCR()" id="test-btn" class="btn">Test OCR.space API</button>
-    </div>
-
-    <div id="ocr-status"></div>
-    <div class="results" id="ocr-results-display">Results will appear here...</div>
-    <button id="toggle-log-btn" class="btn" style="margin-top:10px;">Show Advanced Log</button>
-    <pre id="advanced-log" style="display:none;max-height:300px;overflow:auto;background:#181818;color:#eee;padding:10px;border-radius:6px;margin-top:8px;"></pre>
   </div>
 
   <svg width="240" height="240" viewBox="0 0 240 240">
@@ -61,10 +30,9 @@
   <div class="button-row">
     <button class="btn eliminate-btn">Simulate Kill</button>
     <button class="btn death-btn">Simulate Death</button>
-    <button class="btn" id="test-plugin-btn">Test Plugin</button>
-    <button class="btn" id="test-ocr-btn">Test OCR</button>
-    <button class="btn" id="test-screenshot-btn">Test Screenshot</button>
-    <button class="btn" id="open-ocr-test-btn">OCR Test Panel</button>
+    <button class="btn elimination-btn" onclick="simulateElimination()">Elimination</button>
+    <button class="btn death-btn" onclick="simulateDeath()">Death</button>
+    <button class="btn" onclick="testColorMonitoring()" style="background: linear-gradient(90deg, #FFD700 0%, #FFA500 100%); color: #23233a;">Test Region Color Monitoring</button>
   </div>
 
   <!-- Fix: Move scripts to the bottom -->
@@ -154,223 +122,6 @@
       });
 
       renderDonut(0, 0);
-
-      // OCR Test Functionality
-      let currentFile = null;
-      const uploadSection = document.getElementById('upload-section');
-      const fileInput = document.getElementById('file-input');
-      const imageContainer = document.getElementById('image-container');
-      const imagePreview = document.getElementById('image-preview');
-      const statusDiv = document.getElementById('ocr-status');
-      const resultsDiv = document.getElementById('ocr-results-display');
-      const ocrTestSection = document.getElementById('ocr-test-section');
-
-      // OCR Test Panel Toggle
-      document.getElementById('open-ocr-test-btn').onclick = () => {
-        ocrTestSection.style.display = ocrTestSection.style.display === 'none' ? 'block' : 'none';
-      };
-
-      // File upload handling
-      uploadSection.addEventListener('click', () => {
-        fileInput.click();
-      });
-
-      uploadSection.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        uploadSection.style.borderColor = '#007bff';
-        uploadSection.style.background = '#f8f9fa';
-      });
-
-      uploadSection.addEventListener('dragleave', () => {
-        uploadSection.style.borderColor = '#ccc';
-        uploadSection.style.background = 'white';
-      });
-
-      uploadSection.addEventListener('drop', (e) => {
-        e.preventDefault();
-        uploadSection.style.borderColor = '#ccc';
-        uploadSection.style.background = 'white';
-        const files = e.dataTransfer.files;
-        if (files.length > 0) {
-          loadImage(files[0]);
-        }
-      });
-
-      fileInput.addEventListener('change', (e) => {
-        if (e.target.files.length > 0) {
-          loadImage(e.target.files[0]);
-        }
-      });
-
-      function loadImage(file) {
-        if (!file.type.startsWith('image/')) {
-          showStatus('Please select an image file.', 'error');
-          return;
-        }
-
-        currentFile = file;
-        
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          imagePreview.src = e.target.result;
-          imageContainer.style.display = 'block';
-          showStatus(`Image loaded: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`, 'success');
-          clearResults();
-        };
-        reader.readAsDataURL(file);
-      }
-
-      async function testOCR() {
-        if (!currentFile) {
-          showStatus('Please select an image first.', 'error');
-          return;
-        }
-
-        const testBtn = document.getElementById('test-btn');
-        testBtn.disabled = true;
-        testBtn.textContent = 'Processing...';
-
-        showStatus('Sending image to OCR.space API...', 'info');
-        clearResults();
-
-        const logLines = [];
-        function log(msg, obj) {
-          const ts = new Date().toISOString();
-          const line = `[${ts}] ${msg}` + (obj ? `\n${JSON.stringify(obj, null, 2)}` : '');
-          logLines.push(line);
-          console.log(line);
-        }
-
-        try {
-          const formData = new FormData();
-          formData.append('file', currentFile);
-          formData.append('language', 'eng');
-          formData.append('isOverlayRequired', 'false');
-          formData.append('filetype', 'png');
-          formData.append('detectOrientation', 'true');
-          formData.append('scale', 'true');
-          formData.append('OCREngine', '2');
-
-          const apiKey = document.getElementById('api-key').value.trim();
-          formData.append('apikey', apiKey || 'helloworld'); // Send in formData as well
-          const url = 'https://api.ocr.space/parse/image';
-
-          log('Preparing OCR.space API request', {
-            url,
-            apiKey: apiKey ? apiKey.slice(0, 4) + '...' : 'helloworld',
-            file: {
-              name: currentFile.name,
-              size: currentFile.size,
-              type: currentFile.type
-            },
-            params: {
-              language: 'eng',
-              isOverlayRequired: 'false',
-              filetype: 'png',
-              detectOrientation: 'true',
-              scale: 'true',
-              OCREngine: '2'
-            }
-          });
-
-          const response = await fetch(url, {
-            method: 'POST',
-            headers: {
-              'apikey': apiKey || 'helloworld'
-            },
-            body: formData
-          });
-
-          log('API response received', { status: response.status, statusText: response.statusText });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            log('Error response body', errorText);
-            throw new Error(`HTTP error! status: ${response.status}, body: ${errorText}`);
-          }
-
-          const result = await response.json();
-          log('API JSON parsed', result);
-
-          if (result.IsErroredOnProcessing) {
-            log('OCR Error', result.ErrorMessage);
-            throw new Error(`OCR Error: ${result.ErrorMessage}`);
-          }
-
-          showStatus('OCR completed successfully!', 'success');
-          displayResults(result);
-
-        } catch (error) {
-          log('OCR Error details', error);
-          showStatus(`Error: ${error.message}`, 'error');
-
-          let debugInfo = '=== Debug Information ===\n';
-          debugInfo += `Error: ${error.message}\n`;
-          debugInfo += `File: ${currentFile ? currentFile.name : 'N/A'}\n`;
-          debugInfo += `Size: ${currentFile ? currentFile.size : 'N/A'} bytes\n`;
-          debugInfo += `Type: ${currentFile ? currentFile.type : 'N/A'}\n`;
-          debugInfo += `Timestamp: ${new Date().toISOString()}\n\n`;
-
-          resultsDiv.textContent = debugInfo;
-        } finally {
-          testBtn.disabled = false;
-          testBtn.textContent = 'Test OCR.space API';
-          // Show all logs in the resultsDiv for user visibility
-          resultsDiv.textContent += '\n\n=== Advanced Log ===\n' + logLines.join('\n\n');
-          // Also update the advanced log panel
-          const advLog = document.getElementById('advanced-log');
-          if (advLog) advLog.textContent = logLines.join('\n\n');
-        }
-      }
-
-      function displayResults(result) {
-        let output = '=== OCR.space API Results ===\n\n';
-        
-        output += `Processing Time: ${result.ProcessingTimeInMilliseconds}ms\n`;
-        output += `Text Found: ${result.ParsedResults ? result.ParsedResults.length : 0} regions\n\n`;
-        
-        if (result.ParsedResults && result.ParsedResults.length > 0) {
-          result.ParsedResults.forEach((parsedResult, index) => {
-            output += `--- Region ${index + 1} ---\n`;
-            output += `Text: ${parsedResult.ParsedText}\n`;
-            output += `Confidence: ${parsedResult.TextOverlay ? parsedResult.TextOverlay.Lines.length : 'N/A'}\n`;
-            output += `File Parse Exit Code: ${parsedResult.FileParseExitCode}\n\n`;
-          });
-        } else {
-          output += 'No text detected in the image.\n';
-        }
-
-        output += '\n=== Raw API Response ===\n';
-        output += JSON.stringify(result, null, 2);
-
-        resultsDiv.textContent = output;
-      }
-
-      function showStatus(message, type) {
-        statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
-      }
-
-      function clearResults() {
-        resultsDiv.textContent = 'Results will appear here...';
-      }
-
-      // Make testOCR function globally available
-      window.testOCR = testOCR;
-
-      // Add toggle for advanced log
-      const toggleBtn = document.getElementById('toggle-log-btn');
-      const advLog = document.getElementById('advanced-log');
-      if (toggleBtn && advLog) {
-        toggleBtn.onclick = () => {
-          if (advLog.style.display === 'none') {
-            advLog.style.display = 'block';
-            toggleBtn.textContent = 'Hide Advanced Log';
-          } else {
-            advLog.style.display = 'none';
-            toggleBtn.textContent = 'Show Advanced Log';
-          }
-        };
-      }
     });
   </script>
   <div id="debug-overlay" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;"></div>

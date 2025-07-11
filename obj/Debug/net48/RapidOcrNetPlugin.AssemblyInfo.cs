@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("RapidOcrNetPlugin")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+fcec6b1d4b438856c00804c55325e0bcedcca68f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3abd58db216b96b39757cbccec463550b4583394")]
 [assembly: System.Reflection.AssemblyProductAttribute("RapidOcrNetPlugin")]
 [assembly: System.Reflection.AssemblyTitleAttribute("RapidOcrNetPlugin")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

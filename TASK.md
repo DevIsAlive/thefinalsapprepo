@@ -1,7 +1,7 @@
 # AAAFinalsApp - Task Tracking
 
-## 🎯 Current Sprint: Real OCR Implementation
-**Date**: 2025-07-05
+## 🎯 Current Sprint: Game Event Screenshots & UI Cleanup
+**Date**: 2025-07-06
 
 ## ✅ Completed Tasks
 - [x] Basic Overwolf extension structure
@@ -18,39 +18,44 @@
 - [x] Improved plugin build script with all dependencies
 - [x] Fixed SkiaSharp native library loading issue (libSkiaSharp.dll)
 - [x] Added extensive logging for OCR debugging
+- [x] **OCR.space API Integration** - Replaced RapidOCR with cloud-based OCR
+- [x] **Plugin Architecture Update** - Modified C# plugin to use OCR.space instead of RapidOCR
+- [x] **Lobby Event Workflow** - Implemented screenshot capture, region cropping, and OCR processing
+- [x] **One-time Execution Fix** - Prevented multiple lobby event processing
+- [x] **Git Repository Cleanup** - Removed large files and pushed to clean-branch
 
 ## 🔄 In Progress
-- [x] **Test OCR.space API** - Created test app and local server to resolve CORS issues
-- [x] **Clean up project structure** - Removed unnecessary files and dependencies
-- [x] **Verify API key functionality** - Test with your API key K85859077088957
-- [x] **Integrate OCR into desktop app** - Added OCR test panel to main desktop window
-- [x] **Fix OCR.space API implementation** - Corrected API key header and parameter structure per documentation
+- [x] **Game Event Screenshot Capture** - Capture screenshots on all game events (except repeated lobby)
+- [x] **Desktop UI Cleanup** - Remove test OCR buttons and test panels, keep core functionality
+- [x] **Overlay UI Cleanup** - Remove test buttons, keep circle and ingame status
+- [x] **Ingame Event Notifier** - Add black rectangle animation for game events
+- [x] **Region Color-Based OCR Trigger** - Monitor region around (1517, 862) for yellow-orange color range #f7bb2b
 
 ## 📋 Pending Tasks
 
 ### High Priority
-- [ ] **Integrate OCR.space API** - Replace RapidOCR with cloud-based OCR
-- [ ] **Update Plugin Architecture** - Modify C# plugin to use OCR.space instead of RapidOCR
-- [ ] **Add Error Recovery** - Handle API failures gracefully
-- [ ] **Optimize Performance** - Reduce API calls, implement caching
+- [x] **Implement Game Event Screenshots** - Capture screenshots on elimination, death, match_start, match_end
+- [x] **Add Event Notifier Animation** - Black rectangle slides in from right, shows event type, slides out
+- [x] **Clean Desktop Interface** - Remove OCR test panel, test buttons, keep donut chart and status
+- [x] **Clean Overlay Interface** - Remove test buttons, keep donut chart and status display
+- [x] **Region Color-Based OCR Trigger** - Monitor 100x100 region around (1517, 862) for yellow-orange color range with tolerance 80, trigger OCR when any pixel matches
 
 ### Medium Priority
-- [ ] **Add Configuration UI** - Settings for OCR regions, intervals
-- [ ] **Implement Username Filtering** - Remove duplicates, validate results
-- [ ] **Add Statistics Tracking** - Track detected usernames over time
-- [ ] **Improve UI/UX** - Better visual feedback, notifications
+- [ ] **Optimize Screenshot Storage** - Organize screenshots by event type and timestamp
+- [ ] **Add Event History** - Track and display recent game events
+- [ ] **Improve Notifier Design** - Better styling and animation timing
+- [ ] **Add Configuration Options** - Toggle screenshot capture per event type
 
 ### Low Priority
-- [ ] **Add Export Functionality** - Save results to file
-- [ ] **Multi-Game Support** - Extend beyond The Finals
-- [ ] **Advanced OCR Settings** - Confidence thresholds, language options
-- [ ] **Performance Monitoring** - Track OCR accuracy and speed
+- [ ] **Add Export Functionality** - Save event screenshots to organized folders
+- [ ] **Performance Monitoring** - Track screenshot capture performance
+- [ ] **Advanced Event Filtering** - Filter which events trigger screenshots
+- [ ] **Event Analytics** - Track event frequency and patterns
 
 ## 🐛 Known Issues
-1. **Screenshot polling stops after 2 images** - Need to investigate polling logic
-2. **Test OCR button fails** - GetGameWindowInfo method missing from plugin
-3. **RapidOCR integration issues** - Switching to OCR.space API for better reliability
-4. **Game Events Protocol warnings** - Background script connection issues
+1. **Test buttons cluttering UI** - Need to remove OCR test panel and test buttons
+2. **No event-based screenshots** - Currently only captures on lobby events
+3. **Missing event notifications** - No visual feedback for game events in overlay
 
 ## 🔧 Technical Debt
 - [ ] **Code Refactoring** - Split large files (>500 lines)
@@ -59,18 +64,20 @@
 - [ ] **Testing** - Add unit tests for critical functions
 
 ## 📅 Next Steps
-1. **Test OCR.space API** - Use new test app to verify API functionality
-2. **Update plugin** - Modify C# plugin to use OCR.space instead of RapidOCR
-3. **Test thoroughly** - Verify all functionality works end-to-end
-4. **Optimize** - Improve performance and reduce API costs
+1. **Implement game event screenshot capture** - Add screenshot functionality to all game events
+2. **Create event notifier animation** - Add sliding black rectangle for event notifications
+3. **Clean up desktop UI** - Remove test buttons and panels
+4. **Clean up overlay UI** - Remove test buttons, keep core functionality
+5. **Test thoroughly** - Verify all functionality works end-to-end
 
 ## 🎯 Success Criteria
-- [ ] Screenshots capture continuously during lobby
-- [ ] OCR.space API detects actual usernames reliably
-- [ ] UI displays results correctly
+- [ ] Screenshots captured on elimination, death, match_start, match_end events
+- [ ] No screenshots on repeated lobby events
+- [ ] Clean desktop interface without test buttons
+- [ ] Clean overlay interface with event notifier
+- [ ] Black rectangle animation works for all game events
 - [ ] No console errors or warnings
-- [ ] API costs are reasonable (<500 requests/day free tier)
 
 ---
-**Last Updated**: 2025-07-05
-**Next Review**: 2025-07-06 
+**Last Updated**: 2025-07-06
+**Next Review**: 2025-07-07 

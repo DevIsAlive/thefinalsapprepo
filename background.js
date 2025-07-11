@@ -29,6 +29,21 @@ function log(component, message, level = 'info', data = null) {
   // logOCR will be called separately when needed
 }
 
+// Advanced structured logging
+function logAdvanced(context, message, data = {}) {
+  const timestamp = new Date().toISOString();
+  const logEntry = {
+    timestamp,
+    context,
+    message,
+    ...data
+  };
+  // Print to console
+  console.log(`[ADVANCED][${context}] ${timestamp} - ${message}`, data);
+  // Optionally, send to a log window or file here
+  // sendMessage('ocr_log', 'advanced_log', logEntry);
+}
+
 // Basic initialization check
 try {
   console.log('Background.js script file loaded');
@@ -53,6 +68,13 @@ try {
 const windowNames = ['desktop', 'ingame_overlay'];
 let usernameFound = false;
 let ocrPollingActive = false;
+let lastScene = null;
+
+// New state tracking for 3 criteria workflow
+let criteria1LobbyEventReceived = false;
+let criteria2GEPWorking = false;
+let criteria3PixelMonitoringActive = false;
+let pixelMonitoringStarted = false;
 
 // Boxes to scan for username text
 const scanBoxes = [
@@ -155,6 +177,17 @@ function pollGameRunning() {
       gameInfo: info?.gameInfo
     });
     
+    // Set criteria 1 when game is detected as running (more reliable than waiting for GEP events)
+    if (isRunning && isTargetGame && !criteria1LobbyEventReceived) {
+      criteria1LobbyEventReceived = true;
+      logAdvanced('Criteria', 'Criteria 1 met: Game detected as running', { 
+        isRunning, 
+        classId, 
+        isTargetGame 
+      });
+      checkAllCriteriaReady();
+    }
+    
     if (!isRunning || !isTargetGame) {
       sendGameEvent({ type: 'game_status', status: 'lobby' });
     }
@@ -179,15 +212,27 @@ function setupGEP() {
       overwolf.games.events.setRequiredFeatures(['game_info', 'match_info'], res => {
         if (res.success) {
           log('GEP', 'Game Events Protocol setup successful', 'success');
+          criteria2GEPWorking = true;
+          checkAllCriteriaReady();
         } else {
-          log('GEP', 'Game Events Protocol setup failed, retrying...', 'warn', {
+          log('GEP', 'Game Events Protocol setup failed, but game is running', 'warn', {
             error: res.error
           });
-          setTimeout(setupGEP, 3000);
+          // Even if GEP fails, if game is running and in focus, we can still proceed
+          // This handles cases where GEP doesn't work but game is detected
+          if (info?.gameInfo?.handle) {
+            log('GEP', 'Game handle available, setting criteria 2 as fallback', 'info');
+            criteria2GEPWorking = true;
+            checkAllCriteriaReady();
+          } else {
+            criteria2GEPWorking = false;
+            setTimeout(setupGEP, 3000);
+          }
         }
       });
     } else {
       log('GEP', 'Target game not running, retrying setup...', 'debug');
+      criteria2GEPWorking = false;
       setTimeout(setupGEP, 3000);
     }
   });
@@ -222,6 +267,16 @@ overwolf.games.events.onNewEvents.addListener(pkt => {
       eventData: e.data
     });
     
+    // Set criteria 1 when any game event is received (indicating lobby event)
+    if (!criteria1LobbyEventReceived) {
+      criteria1LobbyEventReceived = true;
+      logAdvanced('Criteria', 'Criteria 1 met: Lobby event received', { event: e });
+      checkAllCriteriaReady();
+    }
+    
+    // Capture screenshot for all game events (except repeated lobby)
+    captureEventScreenshot(e.name, e.data);
+    
     switch (e.name) {
       case 'match_start':
         log('GEP', 'Match started', 'info');
@@ -251,6 +306,59 @@ overwolf.games.events.onNewEvents.addListener(pkt => {
   });
 });
 
+// ---------- Event Screenshot Capture ----------
+function captureEventScreenshot(eventName, eventData) {
+  log('Screenshot', 'Capturing event screenshot', 'info', {
+    eventName: eventName,
+    eventData: eventData
+  });
+
+  overwolf.games.getRunningGameInfo(result => {
+    if (!result || !result.isRunning || ![23478, 234781].includes(result.classId)) {
+      log('Screenshot', 'Game not running, skipping event screenshot', 'debug');
+      return;
+    }
+
+    const handle = result?.gameInfo?.handle || result?.windowHandle?.value;
+    if (!handle) {
+      log('Screenshot', 'No game handle available for event screenshot', 'warn');
+      return;
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const eventType = eventName.replace(/[^a-zA-Z0-9]/g, '_');
+    
+    log('Screenshot', 'Taking event screenshot with plugin', 'debug', {
+      eventName: eventName,
+      eventType: eventType,
+      handle: handle,
+      timestamp: timestamp
+    });
+
+    // Use the plugin for window-specific screenshots
+    sendMessage('ingame_overlay', 'take_event_screenshot', {
+      eventName: eventName,
+      eventData: eventData,
+      handle: handle,
+      timestamp: timestamp
+    });
+  });
+}
+
+function resetCriteria() {
+  criteria1LobbyEventReceived = false;
+  criteria2GEPWorking = false;
+  criteria3PixelMonitoringActive = false;
+  pixelMonitoringStarted = false;
+  logAdvanced('Criteria', 'All criteria reset', {
+    criteria1LobbyEventReceived,
+    criteria2GEPWorking,
+    criteria3PixelMonitoringActive,
+    pixelMonitoringStarted
+  });
+}
+
+// Update the scene change handler to reset criteria when leaving lobby
 overwolf.games.events.onInfoUpdates2.addListener(update => {
   if (update.feature === 'game_info' && update.key === 'scene') {
     const originalScene = update.value;
@@ -263,6 +371,24 @@ overwolf.games.events.onInfoUpdates2.addListener(update => {
       key: update.key
     });
     
+    // Reset criteria when leaving lobby
+    if (lastScene === 'lobby' && normalizedScene !== 'lobby') {
+      resetCriteria();
+    }
+    
+    // Set criteria 1 when scene change is detected (indicating lobby event)
+    if (!criteria1LobbyEventReceived) {
+      criteria1LobbyEventReceived = true;
+      logAdvanced('Criteria', 'Criteria 1 met: Scene change detected (lobby event)', { scene: normalizedScene });
+      checkAllCriteriaReady();
+    }
+    
+    // Only capture screenshot for scene changes (not repeated lobby events)
+    if (normalizedScene !== 'lobby' || !lastScene || lastScene !== 'lobby') {
+      captureEventScreenshot('scene_change', { from: lastScene, to: normalizedScene });
+    }
+    
+    lastScene = normalizedScene;
     sendGameEvent({ type: 'game_status', status: normalizedScene });
   }
 });
@@ -854,4 +980,181 @@ overwolf.windows.onMessageReceived.addListener((message) => {
       }, () => {});
     }
   }
+
+  // Manual trigger for testing
+  if (message.id === 'manual_trigger_pixel_monitoring') {
+    manualTriggerPixelMonitoring();
+  }
+  
+  // Manual trigger for color monitoring testing
+  if (message.id === 'manual_trigger_color_monitoring') {
+    manualTriggerColorMonitoring();
+  }
 });
+
+function debugCriteriaStatus() {
+  logAdvanced('Debug', 'Current criteria status', {
+    criteria1LobbyEventReceived,
+    criteria2GEPWorking,
+    criteria3PixelMonitoringActive,
+    pixelMonitoringStarted,
+    timestamp: new Date().toISOString()
+  });
+}
+
+function checkAllCriteriaReady() {
+  debugCriteriaStatus();
+  
+  if (criteria1LobbyEventReceived && criteria2GEPWorking && !pixelMonitoringStarted) {
+    logAdvanced('Criteria', 'All criteria met! Starting pixel monitoring', {
+      criteria1LobbyEventReceived,
+      criteria2GEPWorking
+    });
+    startPixelMonitoring();
+  } else {
+    logAdvanced('Criteria', 'Not all criteria met yet', {
+      criteria1LobbyEventReceived,
+      criteria2GEPWorking,
+      pixelMonitoringStarted
+    });
+  }
+}
+
+function startPixelMonitoring() {
+  if (pixelMonitoringStarted) {
+    logAdvanced('PixelMonitor', 'Region color monitoring already started', {});
+    return;
+  }
+  
+  logAdvanced('PixelMonitor', 'Starting region color monitoring for yellow-orange color', {});
+  pixelMonitoringStarted = true;
+  
+  // Monitor a region around coordinates (1517, 862) for yellow-orange color #f7bb2b
+  const centerX = 1517;
+  const centerY = 862;
+  const regionWidth = 100; // 100 pixel wide region
+  const regionHeight = 100; // 100 pixel tall region
+  const targetColor = '#f7bb2b';
+  const tolerance = 80; // Increased tolerance for color range matching
+  const intervalMs = 200; // Check every 200ms (slightly slower due to region scanning)
+  
+  if (plugin && plugin.object && typeof plugin.object.StartRegionColorMonitoring === 'function') {
+    plugin.object.StartRegionColorMonitoring(centerX, centerY, regionWidth, regionHeight, targetColor, tolerance, intervalMs, (result) => {
+      logAdvanced('RegionColorMonitor', 'Region color monitoring callback (plugin)', result);
+      handleColorMonitoringCallback(result);
+    });
+    logAdvanced('RegionColorMonitor', 'Region color monitoring started via plugin', {
+      centerX: centerX,
+      centerY: centerY,
+      regionWidth: regionWidth,
+      regionHeight: regionHeight,
+      targetColor: targetColor,
+      tolerance: tolerance,
+      intervalMs: intervalMs
+    });
+  } else if (plugin && plugin.object && typeof plugin.object.StartColorMonitoring === 'function') {
+    // Fallback to single pixel monitoring
+    plugin.object.StartColorMonitoring(centerX, centerY, targetColor, tolerance, intervalMs, (result) => {
+      logAdvanced('ColorMonitor', 'Color monitoring callback (plugin)', result);
+      handleColorMonitoringCallback(result);
+    });
+    logAdvanced('ColorMonitor', 'Fallback to single pixel color monitoring', {
+      x: centerX,
+      y: centerY,
+      targetColor: targetColor,
+      tolerance: tolerance,
+      intervalMs: intervalMs
+    });
+  } else {
+    logAdvanced('ColorMonitor', 'Plugin not available for color monitoring', {});
+    // Fallback to old pixel monitoring if color monitoring not available
+    startPixelPolling(centerX, centerY, intervalMs);
+  }
+}
+
+function startPixelPolling(x, y, intervalMs) {
+  const pollInterval = setInterval(() => {
+    if (plugin && plugin.object && typeof plugin.object.ScanPixelColor === 'function') {
+      plugin.object.ScanPixelColor(x, y, (result) => {
+        logAdvanced('PixelMonitor', 'Pixel polling result', result);
+        if (result && result.success && !result.isBlack) {
+          clearInterval(pollInterval);
+          handlePixelMonitoringCallback({
+            success: true,
+            trigger: 'screen_not_black',
+            pixelData: result
+          });
+        }
+      });
+    } else {
+      logAdvanced('PixelMonitor', 'Plugin not available for pixel scanning', {});
+      clearInterval(pollInterval);
+    }
+  }, intervalMs);
+}
+
+function handleColorMonitoringCallback(result) {
+  logAdvanced('ColorMonitor', 'Color monitoring callback received', result);
+  
+  if (result && result.success && result.trigger === 'color_detected') {
+    criteria3PixelMonitoringActive = true;
+    
+    // Log the detection details
+    if (result.foundX && result.foundY) {
+      logAdvanced('ColorMonitor', `Target color detected at (${result.foundX}, ${result.foundY})! Taking screenshot and running OCR`, {
+        foundX: result.foundX,
+        foundY: result.foundY,
+        foundColor: result.foundColor,
+        colorDistance: result.colorDistance,
+        regionCenter: result.regionCenter,
+        regionSize: result.regionSize
+      });
+    } else {
+      logAdvanced('ColorMonitor', 'Target color detected! Taking screenshot and running OCR', result);
+    }
+    
+    // Take screenshot and run OCR immediately
+    requestOverlayOCR();
+  } else {
+    logAdvanced('ColorMonitor', 'Color callback received but conditions not met', {
+      result: result,
+      success: result?.success,
+      trigger: result?.trigger,
+      colorDistance: result?.colorDistance
+    });
+  }
+}
+
+function handlePixelMonitoringCallback(result) {
+  logAdvanced('PixelMonitor', 'Pixel monitoring callback received', result);
+  
+  if (result && result.success && result.trigger === 'screen_not_black') {
+    criteria3PixelMonitoringActive = true;
+    logAdvanced('PixelMonitor', 'Screen is no longer black! Taking screenshot and running OCR', result);
+    // Take screenshot and run OCR
+    requestOverlayOCR();
+  } else {
+    logAdvanced('PixelMonitor', 'Pixel callback received but conditions not met', {
+      result: result,
+      success: result?.success,
+      trigger: result?.trigger,
+      isBlack: result?.isBlack
+    });
+  }
+}
+
+// Manual trigger for testing
+function manualTriggerPixelMonitoring() {
+  logAdvanced('Manual', 'Manual trigger activated - starting pixel monitoring', {});
+  criteria1LobbyEventReceived = true;
+  criteria2GEPWorking = true;
+  startPixelMonitoring();
+}
+
+// Manual trigger for color monitoring testing
+function manualTriggerColorMonitoring() {
+  logAdvanced('Manual', 'Manual trigger activated - starting color monitoring', {});
+  criteria1LobbyEventReceived = true;
+  criteria2GEPWorking = true;
+  startPixelMonitoring(); // This now starts color monitoring
+}
